@@ -85,7 +85,7 @@ function EditorController:open(name, content, save)
 end
 
 --- @private
-function EditorController:_dump_bufferlist()
+function EditorController:_print_bufferlist()
   for i, v in ipairs(self.model.buffers) do
     Log.debug(i, v.name)
   end
@@ -356,6 +356,7 @@ function EditorController:_handle_submit(go)
         go(chunks)
       else
         local eval_err = res
+        -- Log.debug(Debug.terse_t(res, nil, nil, true))
         if eval_err then
           inter:set_error(eval_err)
         end
@@ -502,9 +503,10 @@ function EditorController:_normal_mode_keys(k)
     if Key.is_enter(k) then
       --- insert empty block if input is empty
       if is_empty
-          and not Key.ctrl()
-          and Key.shift()
-          and not Key.alt() then
+      and not Key.ctrl()
+      and Key.shift()
+      and not Key.alt() then
+        Log.info('S-ret')
         buf:insert_newline()
         self:save(buf)
         self.view:refresh()
@@ -514,6 +516,7 @@ function EditorController:_normal_mode_keys(k)
       if Key.ctrl()
           and not Key.shift()
           and not Key.alt() then
+        Log.info('C-ret')
         local r = buf:insert_newline()
         self:save(buf)
         if r then

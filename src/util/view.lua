@@ -23,6 +23,7 @@ end
 --- @param cfg ViewConfig
 local write_line = function(l, str, y, breaks, cfg)
   local dy = y - (-l + 1 + breaks) * cfg.fh
+  Log.once(dy, str)
   gfx.setFont(cfg.font)
   gfx.print(str, 0, dy)
 end
