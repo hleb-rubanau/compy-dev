@@ -247,6 +247,7 @@ function UserInputView:render_error(err_text)
   gfx.setColor(colors.input.error)
 
   for l, str in ipairs(err_text) do
+    -- Log.once('render', l, str, start_y )
     local breaks = 0 -- starting height is already calculated
     ViewUtils.write_line(l, str, start_y, breaks, self.cfg)
   end
@@ -270,6 +271,7 @@ function UserInputView:render(input, status)
       self:render_input(input, status)
     end
   end)
+  -- ViewUtils.screenshot(self.canvas)
 end
 
 --- Draw the pre-rendered canvas to screen

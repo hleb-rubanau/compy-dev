@@ -170,6 +170,7 @@ Controller = {
   --- @param C ConsoleController
   set_love_keypressed = function(C)
     local function keypressed(k)
+      Log.fire_once()
       if Key.ctrl() and Key.shift() then
         if love.DEBUG then
           if k == "1" then
