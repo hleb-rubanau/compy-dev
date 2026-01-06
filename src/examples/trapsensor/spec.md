@@ -2,7 +2,7 @@
 
 ## Gameplay
 
-* First-safe-click rule (mines placement happens after 1st click, which is guaranteed to land on non-trap cell with no adjacent traps)
+* First-safe-click rule (traps placement happens after 1st click, which is guaranteed to land on non-trap cell with no adjacent traps)
 * Flood fill is optional (postponed until phase 1)
 * Chording not provided for simplicity
 * Stats tracking and displayign (time elapsed, clicks done, cells revealed) is not strictly necessary, but could greatly improve UX
@@ -14,7 +14,7 @@
   * View -- single method to redraw game grid from model state
   * Controller -- set of functions altering model and triggering redraws (clicks handler, mines placement, flood fill)
 * Sequential traps placement with adjustable probabilities
-* UI: decorations/visuals would be itentionally simplistic, not trying to resemble proprietary look. Prettiness is subject to best effort approach. :)
+* UI: decorations/visuals would be intentionally simplistic, not trying to resemble proprietary look. Prettiness is subject to best effort approach. :)
 
 # Specifications
 
@@ -37,10 +37,10 @@ Cell: table of attributes
 * `blown`: bool
 * `adjacent_traps`: int # 0..8
 
-### Supporting Runtime variables
+### Supporting runtime variables
 
 * Game status: ('init','started','lost','won')
-* Actual mines number (in most cases is equal to config value, but must be reduced if setting happens to be extremely close to WxH)
+* Actual traps number (_in most cases is equal to config value, but must be reduced if setting happens to be extremely close to WxH_)
 * Stats:
   * game start time
   * time elapsed
@@ -51,16 +51,16 @@ Cell: table of attributes
 
 * Main canvas: grid
 * Sidebar or bottom bar: stats, hints, game status ('ready/lost/win'), optional restart button
-* Full redraw (partial redraws can be supported, but they actually would complicate the code)
+* Full redraw (_partial redraws can be supported, but they actually would complicate the code_)
 
 ## Controllers/flows
 
-In the specifications below, following conventions are used
+In the specifications below, following conventions are used:
 
 * 'Events' are events after recognition
 * 'Actions' are functions triggered in response to user action
 * 'Flows' are functions initiated from the code according to game logic
-* Ternary operators used in the document for clarity, in the code we will follow conventions
+* Ternary operators and lowercase names are used occasionally for readability; the real code will follow coding style conventions
 
 
 ### UI events dispatching logic
@@ -73,8 +73,7 @@ doubleclick on grid:      game_not_finished ? action_reveal(x,y) : action_init()
 click on restart button:  action_init()
 ```
 
-Coordinates (x,y) are logical (in WxH space), not physical. Event dispatcher function ensures conversion.
-Names of functions are lowercased here for readability, in the code they will follow conventions
+Coordinates (x,y) are logical (in WxH space). Event dispatcher function ensures conversion between physical and logical coords.
 
 
 ### Action functions
@@ -120,20 +119,20 @@ Lists below describe high-level logic of action handlers. Subentries are steps w
       * decrement N
       * if random(0..1) <= P: 
         * decrement M
-        * cell.is_mine = true
-        * for every neighbour increment 'adjacent traps' attribute
+        * cell.trap = true
+        * for every neighbour cell: increment 'adjacent_traps' attribute
 
 * `flow_reveal(x:int, y:int, depth: int)`:
 
   * return if cell.revealed 
   * if cell.trap : cell.blown=true and return
   * update model: cell.revealed=true, counters.revealed++
-  * optional floodfill:
-    * if call.adjacent == 0 && (depth <= Dmax) :
+  * optional flood-fill:
+    * if cell.adjacent == 0 && (depth <= Dmax) :
       * for each neighbour as (xn,yn): 
         * if cell at (xn,yn) not revealed:
           * flow_reveal(xn,yn,depth=depth+1)
-      * redraw() # purely for pretty cascaded visualization of flood-fill; skip if no recursions were triggered
+      * redraw() # purely for cascaded visualization of flood-fill; skip if no recursions were triggered
 
 * `flow_evaluate_result(x,y)`:
   * if cell at (x,y) is blown trap: game status = 'loss' 
