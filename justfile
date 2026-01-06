@@ -107,6 +107,9 @@ dev-js-c:
   live-server --no-browser
   wait
 
+dev-bootstrap:
+  git submodule init --recursive
+
 # install prerequisites for running/packaging js verison
 setup-web-dev:
   cd web ; npm install
