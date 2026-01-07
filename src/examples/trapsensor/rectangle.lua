@@ -1,11 +1,11 @@
--- Simple Canvas class for representing rectangle coordinates
-Canvas = {}
-Canvas.__index = Canvas
+-- Simple Rectangle class for representing rectangle coordinates
+Rectangle = {}
+Rectangle.__index = Rectangle
 
--- Constructor: create a new Canvas instance
+-- Constructor: create a new Rectangle instance
 -- @param start_x, start_y: top-left corner coordinates (default 0, 0)
 -- @param width, height: dimensions of the canvas
-function Canvas:new(start_x, start_y, width, height)
+function Rectangle:new(start_x, start_y, width, height)
     -- Handle omitted start coordinates
     if height == nil then
         -- Called with 2 args: new(width, height)
@@ -16,13 +16,13 @@ function Canvas:new(start_x, start_y, width, height)
     end
     
     -- If called on an instance (for sub-canvas), add parent's start coordinates
-    if self ~= Canvas then
+    if self ~= Rectangle then
         start_x = self.start_x + start_x
         start_y = self.start_y + start_y
     end
     
     -- Create new instance
-    local instance = setmetatable({}, Canvas)
+    local instance = setmetatable({}, Rectangle)
     
     -- Store attributes
     instance.start_x = start_x
@@ -54,44 +54,44 @@ function Canvas:new(start_x, start_y, width, height)
 end
 
 
-function Canvas:upper(new_height)
+function Rectangle:upper(new_height)
   if new_height<1 then
     new_height = self.height * new_height
   end
 
-  return Canvas:new( self.sx, self.sy, self.w, new_height )
+  return Rectangle:new( self.sx, self.sy, self.w, new_height )
 end
 
-function Canvas:lower(new_height)
+function Rectangle:lower(new_height)
   if new_height<1 then
     new_height = self.height * new_height
   end
 
   new_start_y = self.start_y + (self.height - new_height)
 
-  return Canvas:new( self.sx, new_start_y, self.w, new_height)
+  return Rectangle:new( self.sx, new_start_y, self.w, new_height)
 end
 
-function Canvas:central(w, h)
+function Rectangle:central(w, h)
 
   local cx = self.mid_x - w/2
   local cy = self.mid_y - h/2
-  return Canvas:new( cx, cy, w, h )
+  return Rectangle:new( cx, cy, w, h )
 
 end
 
-function Canvas:coordinates()
+function Rectangle:coordinates()
   return self.start_x, self.start_y, self.end_x, self.end_y 
 end 
 
-function Canvas:x_y_w_h()
+function Rectangle:x_y_w_h()
   return self.x, self.y, self.w, self.h
 end 
 
-function Canvas:inspect()
+function Rectangle:inspect()
   local s = self
   return string.format("%s x %s [ (%s,%s) .. (%s,%s) ] ; center -> (%s,%s)", s.w, s.h, s.sx, s.sy, s.ex, s.ey, s.mx, s.my)
   --return string.format("%s x %s [ (%s,%s) .. (%s,%s) ] ", self.w, self.h, self:coordinates() )
 end
 
-return Canvas
+return Rectangle
