@@ -13,15 +13,28 @@ colors = { -- white, black, bright, yellow, green, magenta, cyan, blue, red, wit
   status_panel_fg = Color[Color.green],
   text = Color[Color.red],
   yellow = Color[Color.yellow],
-  --field_border = {200,200,220}
-  field_border = Color[Color.white]
+  field_border = Color[Color.white],
+  cell_not_revealed_bg = { 0.5, 0.5, 0.5 },
+  cell_revealed_bg = { 0.25, 0.25, 0.25 },
+  cell_blown_bg = Color[Color.red],
+  cell_flagged_bg = Color[Color.yellow],
+  cell_trap_fg = Color[Color.black],
+  --cell_flagged_fg = { 1, 0.6, 0 }, -- orange
+  cell_flagged_fg = Color[Color.red], 
+  cell_default_fg = Color[Color.blue]
 }
+
+fonts = {
+  status = gfx.newFont(32),
+  cell   = gfx.newFont(28)
+} 
 
 -- to be initialized
 rectangles = { }
 state = { }
 config = { }
 grid = { }
+counters = { }
 
 function logdebug(...)
   local msg = string.format(...)
@@ -112,7 +125,9 @@ function drawStatus(...)
 
   -- required to clean up anything previously written
   drawStatusPanel() 
+
   gfx.setColor(colors.status_panel_fg)
+  gfx.setFont(fonts.status) 
 
   -- shortcut
   local tb = rectangles.status_textbox
@@ -144,4 +159,197 @@ function initUI()
   drawInitialStatus()
 end
 
+function newCell() 
+
+  local cell = {
+    revealed = false,
+    flagged = false,
+    exposed = false,
+    trap = nil,
+    blown = false,
+    traps_around = 0,
+    protected = false
+  }
+  return cell
+end
+
+
+function flowInitGrid() 
+  grid = {}
+  for i = 1, config.cols do
+    local col = {}
+    for j = 1, config.rows do
+      col[j] = newCell()
+    end
+    grid[i] = col
+  end
+end
+
+-- testing all displayable combinations
+function mockPlacement()
+  
+  for i = 1, 10 do -- 0..8 neighbours and mine
+    for j = 1, 4 do -- untouched, flagged, revealed, exposed
+
+      local cell = grid[i][j]
+      if i <= 9 then
+        cell.traps_around = i-1
+      else 
+        cell.trap = true
+      end
+
+      if j == 2 then
+        cell.flagged = true
+      elseif j==3 then
+        cell.revealed = true
+        if cell.trap then
+          cell.blown = true
+        end
+      elseif j==4 then
+        cell.exposed = true
+      end
+
+    end
+  end
+end
+
+function flowInit()
+  state.status = 'ready'
+  state.result = nil
+  state.started = nil
+
+  counters.revealed = 0
+  counters.seconds =  0
+  counters.clicks = 0
+
+  flowInitGrid()
+
+  mockPlacement() -- for display testing
+end
+
+function redrawStatus()
+  if (state.status == 'ready') then
+    drawStatus("Click on any cell to start...")
+  else
+  end
+end 
+
+function getCellRectangle(i,j)
+  local field = rectangles.field
+  local cell_x = field.x + (i-1)*CELL_SIZE
+  local cell_y = field.y + (j-1)*CELL_SIZE
+
+  return field:new( cell_x, cell_y, CELL_SIZE, CELL_SIZE )
+
+end
+
+function getCellBackgroundColor(cell) 
+
+  if cell.blown then
+    return colors.cell_blown
+  elseif cell.revealed then
+    return colors.cell_revealed
+  else
+    return colors.cell_hidden
+  end
+
+end
+
+function writeCellLabel(canvas, content, fgColor)
+  gfx.setColor( fgColor )
+  gfx.setFont( fonts.cell )
+  local fontHeight = fonts.cell:getHeight()
+  local text_y = canvas.mid_y - (fontHeight/ 2 )
+  gfx.printf( content, canvas.x, text_y, canvas.w, 'center' )
+end
+
+
+function renderCell(canvas, bgcolor, fgcolor, content)
+  gfx.setColor( bgcolor )
+  gfx.rectangle('fill', canvas:x_y_w_h() )
+  gfx.setColor( colors.field_border )
+  gfx.rectangle('line', canvas:x_y_w_h() )
+
+  if content then
+    if type(content) == 'function' then
+      content( canvas )
+    else 
+      writeCellLabel( canvas, content, fgcolor )
+    end
+  end
+end
+
+function getCellBackgroundColor(cell)
+  if cell.flagged then
+    return colors.cell_flagged_bg
+  elseif cell.blown then
+    return colors.cell_blown_bg
+  elseif cell.revealed then
+    return colors.cell_revealed_bg
+  else
+    return colors.cell_not_revealed_bg
+  end
+end
+
+function getCellForegroundColor(cell)
+  if cell.flagged then
+    return colors.cell_flagged_fg
+  elseif cell.trap then
+    return colors.cell_trap_fg
+  else
+    return colors.cell_default_fg
+  end
+end
+
+function getCellDisplayContent(cell)
+  local is_exposed_trap = cell.trap and cell.exposed
+
+  if cell.blown then
+    return "X"
+  elseif is_exposed_trap then
+    return '*'
+  elseif cell.flagged then
+    return '?'
+  elseif cell.revealed then 
+    if cell.traps_around > 0 then
+      return ''..cell.traps_around
+    end
+  end
+    
+  return false
+end
+
+
+function drawCell(i,j)
+
+  local cell = grid[i][j]
+  local canvas = getCellRectangle(i,j)
+  
+  local bgColor = getCellBackgroundColor(cell)
+  local fgColor = getCellForegroundColor(cell) 
+  local content = getCellDisplayContent(cell)
+
+  renderCell( canvas, bgColor, fgColor, content )
+
+end
+
+function redrawField()
+  for i = 1, config.cols do
+    for j = 1, config.rows do
+      drawCell(i,j)
+    end
+  end
+end
+
+function redraw()
+  redrawField()
+  redrawStatus()
+end
+
+function actionInit()
+  flowInit()
+  redraw()
+end
+
 initUI()
+actionInit() 
