@@ -15,97 +15,137 @@ colors = { -- white, black, bright, yellow, green, magenta, cyan, blue, red, wit
   field_border = Color[Color.white]
 }
 
-function logdebug(msg)
+-- to be initialized
+ui = { }
+state = { }
+config = { }
+grid = { }
+
+function logdebug(...)
+  local msg = string.format(...)
   print(msg)
-  --drawText(msg)
 end
 
 gfx = love.graphics
 Canvas = require("canvas")
 
---- base geometries and coordinates
+function initPanels()
+  --- base geometries and coordinates
 
-screen_w, screen_h = gfx.getDimensions()
+  local screen_w, screen_h = gfx.getDimensions()
 
-screen = Canvas:new(screen_w, screen_h)
+  local screen = Canvas:new(screen_w, screen_h)
 
--- lower 10% are occupied by console/input line, 
--- which stays on top of any drawing 
--- TBD: figure out how to use or erase this line
--- for now we reduce the logical screen to 90% of physical one
-screen=screen:upper(0.89)
+  -- leave space for console/input lines
+  local ui_canvas = screen:upper(0.89)
 
-main_panel   = screen:upper(0.85)
-status_panel = screen:lower(0.15)
+  ui.main_panel   = ui_canvas:upper(0.85)
+  ui.status_panel = ui_canvas:lower(0.15)
 
--- grid is logical, field is visual
-grid_width = math.floor( main_panel.width / CELL_SIZE )
-grid_height = math.floor( main_panel.height / CELL_SIZE )
---grid_width = main_panel.width // CELL_SIZE 
---grid_height = main_panel.heifht // CELL_SIZE 
+end 
 
-field_width = CELL_SIZE * grid_width 
-field_height = CELL_SIZE * grid_height
+function initGridConfig()
 
-field = main_panel:central( field_width, field_height )
-
-function drawField()
-  gfx.setColor(colors.field_border)
-
-  -- alias
-  for i = 0, grid_width do
-    local ix = field.x + i*CELL_SIZE 
-    gfx.line( ix, field.top, ix, field.bottom )
-  end
-  for j = 0 , grid_height do
-    local jy = field.y + j*CELL_SIZE 
-    gfx.line( field.left, jy, field.right, jy )
-  end
-end
-
-function drawBackground()
-  gfx.setColor(colors.bg)
-  gfx.rectangle("fill", main_panel:x_y_w_h() )
-  gfx.setColor(colors.status_panel_bg)
-  gfx.rectangle("fill", status_panel:x_y_w_h() )
-end
-
-function drawText(txt)
- 
-  -- calculate textbox geometry and padding
-
-  -- text is v-centered, so its upper edge is..
-  -- above v-center by 0.5 of text height (font height)
-  local font_h = font:getHeight() 
-  local box_y = status_panel.mid_y   - ( font_h*0.5 )
+  local cols = math.floor( ui.main_panel.width / CELL_SIZE )
+  local rows = math.floor( ui.main_panel.height / CELL_SIZE )
+  local n_cells = cols * rows
+  local n_traps = math.ceil( n_cells * TRAP_PERCENT / 100 )
   
-  -- font-size determines vertical padding
-  -- horizontal padding would be the same (for visual balance)
-  local padding = box_y - status_panel.start_y
+  config = { 
+    cols = cols,
+    rows = rows,
+    n_cells = n_cells,
+    n_traps = n_traps
+  }
 
-  -- apply padding horizontally
-  local box_x = status_panel.start_x + padding
-  local box_w = status_panel.width - (2*padding)
-
-  --print( "Screen: " .. screen:inspect() )
-  --print( "Main panel: " .. main_panel:inspect() )
-  --print( "Status panel: " .. status_panel:inspect() )
-
-  --print( string.format("Writing at: x=%s, y=%s, wrap=%s, (font_size=%s)", sx, sy, textbox_width, font_size) )  
-
-  gfx.setColor(colors.status_panel_bg)
-  gfx.rectangle("fill", status_panel:x_y_w_h() )
-
-  gfx.setColor(colors.status_panel_fg)
-  gfx.rectangle("line", status_panel:x_y_w_h() )
-  gfx.printf( txt, box_x, box_y, box_w )
-
-  -- gfx.rectangle("line", box_x, box_y, box_w, font_h )
-  -- gfx.setColor(colors.yellow)
-  -- gfx.line( status_panel.x, status_panel.ey-5, status_panel.ex, status_panel.ey-5 )
 end
 
+function initGameField()
 
-drawBackground()
-drawText("Hello, world")
-drawField()
+  local width = CELL_SIZE * config.cols
+  local height = CELL_SIZE * config.rows
+
+  ui.field = ui.main_panel:central( width, height )
+
+end
+
+function initStatusTextBox()
+
+  local sp = ui.status_panel
+
+  local textbox_height = font:getHeight() 
+  local padding = ( sp.height - textbox_height ) / 2
+  local textbox_width = sp.width - 2*padding
+
+  ui.status_textbox = sp:central(textbox_width, textbox_height)
+
+end 
+
+--- visualisation 
+
+function drawGameField()
+  gfx.setColor(colors.field_border)
+  local f = ui.field 
+
+  for i = 0, config.cols do
+    local border_pos_x = f.x + i*CELL_SIZE 
+    gfx.line( border_pos_x, f.top, border_pos_x, f.bottom )
+  end
+
+  for j = 0 , config.rows do
+    local border_pos_y = f.y + j*CELL_SIZE 
+    gfx.line( f.left, border_pos_y, f.right, border_pos_y )
+  end
+end
+
+function drawMainPanel()
+  gfx.setColor(colors.bg)
+  gfx.rectangle("fill", ui.main_panel:x_y_w_h() )
+end 
+
+function drawStatusPanel()
+  gfx.setColor(colors.status_panel_bg)
+  gfx.rectangle("fill", ui.status_panel:x_y_w_h() )
+  gfx.setColor(colors.status_panel_fg)
+  gfx.rectangle("line", ui.status_panel:x_y_w_h() )
+end
+
+function drawStatus(...)
+
+  local txt = string.format(...)
+
+  -- required to clean up anything previously written
+  drawStatusPanel() 
+  gfx.setColor(colors.status_panel_fg)
+
+  -- shortcut
+  local tb = ui.status_textbox
+  logdebug("Textbox shape: ".. tb:inspect() )
+  gfx.printf( txt, tb.x, tb.y, tb.width )
+
+end
+
+function drawInitialStatus()
+  local c = config.cols
+  local r = config.rows
+  local n = config.n_cells
+  local m = config.n_traps
+  drawStatus("Grid: %s x %s ( %s cells with %s traps)",c,r,n,m)
+end
+
+-- called once
+function initUI()
+
+  initPanels()
+  initGridConfig()
+  initGameField()
+  initStatusTextBox()
+
+  drawMainPanel()
+  drawGameField()
+  drawStatusPanel()
+
+  drawInitialStatus()
+end
+
+initUI()
