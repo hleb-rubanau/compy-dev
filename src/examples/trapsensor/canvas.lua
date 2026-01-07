@@ -46,12 +46,15 @@ function Canvas:new(start_x, start_y, width, height)
     instance.h  = instance.height
     instance.x  = instance.sx
     instance.y  = instance.sy
-    
+    instance.top =  instance.start_y
+    instance.bottom = instance.end_y
+    instance.left = instance.start_x
+    instance.right = instance.end_x
     return instance
 end
 
 
-function Canvas:top(new_height) 
+function Canvas:upper(new_height)
   if new_height<1 then
     new_height = self.height * new_height
   end
@@ -59,7 +62,7 @@ function Canvas:top(new_height)
   return Canvas:new( self.sx, self.sy, self.w, new_height )
 end
 
-function Canvas:bottom(new_height) 
+function Canvas:lower(new_height)
   if new_height<1 then
     new_height = self.height * new_height
   end
@@ -67,6 +70,14 @@ function Canvas:bottom(new_height)
   new_start_y = self.start_y + (self.height - new_height)
 
   return Canvas:new( self.sx, new_start_y, self.w, new_height)
+end
+
+function Canvas:central(w, h)
+
+  local cx = self.mid_x - w/2
+  local cy = self.mid_y - h/2
+  return Canvas:new( cx, cy, w, h )
+
 end
 
 function Canvas:coordinates()

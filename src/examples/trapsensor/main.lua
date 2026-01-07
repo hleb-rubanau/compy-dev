@@ -1,8 +1,30 @@
 -- Title: Trap Sensor
 
-Canvas = require("canvas")
+--- constants 
+
+TRAP_PERCENT=15
+CELL_SIZE=32 
+
+colors = { -- white, black, bright, yellow, green, magenta, cyan, blue, red, with_alpha()
+  bg = Color[Color.blue],
+  status_panel_bg = Color[Color.bright],
+  status_panel_fg = Color[Color.green],
+  text = Color[Color.red],
+  yellow = Color[Color.yellow],
+  --field_border = {200,200,220}
+  field_border = Color[Color.white]
+}
+
+function logdebug(msg)
+  print(msg)
+  --drawText(msg)
+end
 
 gfx = love.graphics
+Canvas = require("canvas")
+
+--- base geometries and coordinates
+
 screen_w, screen_h = gfx.getDimensions()
 
 screen = Canvas:new(screen_w, screen_h)
@@ -11,22 +33,34 @@ screen = Canvas:new(screen_w, screen_h)
 -- which stays on top of any drawing 
 -- TBD: figure out how to use or erase this line
 -- for now we reduce the logical screen to 90% of physical one
-screen=screen:top(0.89)
+screen=screen:upper(0.89)
 
-main_panel   = screen:top(0.85)
-status_panel = screen:bottom(0.15)
+main_panel   = screen:upper(0.85)
+status_panel = screen:lower(0.15)
 
-colors = { -- white, black, bright, yellow, green, magenta, cyan, blue, red, with_alpha()
-  bg = Color[Color.blue],
-  status_panel_bg = Color[Color.bright],
-  status_panel_fg = Color[Color.green],
-  text = Color[Color.red],
-  yellow = Color[Color.yellow],
-}
+-- grid is logical, field is visual
+grid_width = math.floor( main_panel.width / CELL_SIZE )
+grid_height = math.floor( main_panel.height / CELL_SIZE )
+--grid_width = main_panel.width // CELL_SIZE 
+--grid_height = main_panel.heifht // CELL_SIZE 
 
-function logdebug(msg)
-  print(msg)
-  --drawText(msg)
+field_width = CELL_SIZE * grid_width 
+field_height = CELL_SIZE * grid_height
+
+field = main_panel:central( field_width, field_height )
+
+function drawField()
+  gfx.setColor(colors.field_border)
+
+  -- alias
+  for i = 0, grid_width do
+    local ix = field.x + i*CELL_SIZE 
+    gfx.line( ix, field.top, ix, field.bottom )
+  end
+  for j = 0 , grid_height do
+    local jy = field.y + j*CELL_SIZE 
+    gfx.line( field.left, jy, field.right, jy )
+  end
 end
 
 function drawBackground()
@@ -37,7 +71,6 @@ function drawBackground()
 end
 
 function drawText(txt)
-  
  
   -- calculate textbox geometry and padding
 
@@ -54,11 +87,11 @@ function drawText(txt)
   local box_x = status_panel.start_x + padding
   local box_w = status_panel.width - (2*padding)
 
-  print( "Screen: " .. screen:inspect() )
-  print( "Main panel: " .. main_panel:inspect() )
-  print( "Status panel: " .. status_panel:inspect() )
+  --print( "Screen: " .. screen:inspect() )
+  --print( "Main panel: " .. main_panel:inspect() )
+  --print( "Status panel: " .. status_panel:inspect() )
 
-  print( string.format("Writing at: x=%s, y=%s, wrap=%s, (font_size=%s)", sx, sy, textbox_width, font_size) )  
+  --print( string.format("Writing at: x=%s, y=%s, wrap=%s, (font_size=%s)", sx, sy, textbox_width, font_size) )  
 
   gfx.setColor(colors.status_panel_bg)
   gfx.rectangle("fill", status_panel:x_y_w_h() )
@@ -75,4 +108,4 @@ end
 
 drawBackground()
 drawText("Hello, world")
-
+drawField()
