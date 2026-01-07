@@ -15,13 +15,20 @@ colors = { -- white, black, bright, yellow, green, magenta, cyan, blue, red, wit
   yellow = Color[Color.yellow],
   field_border = Color[Color.white],
   cell_not_revealed_bg = { 0.5, 0.5, 0.5 },
-  cell_revealed_bg = { 0.25, 0.25, 0.25 },
+  --cell_revealed_bg = { 0.25, 0.25, 0.25 },
+  cell_revealed_bg = Color[Color.green],
   cell_blown_bg = Color[Color.red],
   cell_flagged_bg = Color[Color.yellow],
   cell_trap_fg = Color[Color.black],
   --cell_flagged_fg = { 1, 0.6, 0 }, -- orange
   cell_flagged_fg = Color[Color.red], 
-  cell_default_fg = Color[Color.blue]
+  --cell_default_fg = Color[Color.blue],
+  cell_default_fg = Color[Color.cyan],
+  cell_revealed_fg_1 = Color[Color.white],
+  --cell_revealed_fg_2 = Color[Color.cyan],
+  cell_revealed_fg_2 = Color[Color.black],
+  cell_revealed_fg_3 = Color[Color.magenta],
+  cell_revealed_fg_4 = Color[Color.red]
 }
 
 fonts = {
@@ -297,7 +304,17 @@ function getCellForegroundColor(cell)
   elseif cell.trap then
     return colors.cell_trap_fg
   else
-    return colors.cell_default_fg
+    if cell.traps_around >= 4 then
+      return colors.cell_revealed_fg_4
+    elseif cell.traps_around == 3 then
+      return colors.cell_revealed_fg_3
+    elseif cell.traps_around == 2 then
+      return colors.cell_revealed_fg_2
+    elseif cell.traps_around == 1 then
+      return colors.cell_revealed_fg_1
+    else
+      return colors.cell_default_fg
+    end
   end
 end
 
