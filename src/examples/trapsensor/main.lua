@@ -507,6 +507,11 @@ end
 --- actions 
 --- (check conditions, initiate flows and redraws)
 
+function actionInit()
+  flowInit()
+  redraw()
+end
+
 function actionFlag(i,j) 
   local cell = grid[i][j]
   if not(cell.revealed) then
@@ -604,8 +609,13 @@ function love.doubleclick(x,y)
   dispatchAction('reveal', x, y )
 end
 
+function love.keyreleased(k)
+  if k == "r" then
+    actionInit()
+  end
+end
+
 --- start 
 
 initUI()
-flowInit() 
-redraw()
+actionInit()
