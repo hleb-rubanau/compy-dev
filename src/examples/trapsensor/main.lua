@@ -32,7 +32,8 @@ colors = { -- white, black, bright, yellow, green, magenta, cyan, blue, red, wit
 }
 
 fonts = {
-  status = gfx.newFont(32),
+  --status = gfx.newFont(32),
+  status = gfx.newFont(24),
   cell   = gfx.newFont(28)
 } 
 
@@ -92,7 +93,8 @@ function initStatusTextBox()
   local sp = rectangles.status_panel
 
   local textbox_height = font:getHeight() 
-  local padding = ( sp.height - textbox_height ) / 2
+  --local padding = ( sp.height - textbox_height ) / 2
+  local padding = 5
   local textbox_width = sp.width - 2*padding
 
   local textbox = sp:central(textbox_width, textbox_height)
@@ -176,11 +178,11 @@ function statusStatsLine()
     Left = counters.pending,
     Time = counters.seconds
   } 
-  local substrings = ''
+  local substrings = { }
   for k,v in pairs(named_stats) do
     substrings[#substrings+1] = k .. ": " ..v
   end
-  return table.concat(parts, " | ")
+  return table.concat(substrings, " | ")
 end
 
 function statusReadyLine() 
@@ -405,9 +407,11 @@ end
 function flowPlaceTrap(i,j) 
   local cell = grid[i][j]
   cell.trap = true
-  
+ 
   table.insert( traps, cell ) -- for later reference
   counters.traps = counters.traps+1
+  
+  logdebug("Trap #%s at: (%s, %s)", counters.traps, i, j) 
 
   local neighbours = getNeighbourPositions(i,j)
   for idx, position in ipairs(neighbours) do
@@ -587,6 +591,10 @@ actions = {
 function dispatchAction(action_name, x, y)
   local action_allowed = isActionAllowed(action_name)
   local click_within_field = isPointInGameField(x, y)
+
+  logdebug("Action name: "..action_name)
+  logdebug("Action allowed:"..action_allowed)
+  logdebug("Click in field: "..click_within_field)
 
   if action_allowed then
     flowUpdateTimer()
