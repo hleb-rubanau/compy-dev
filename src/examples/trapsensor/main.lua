@@ -142,7 +142,7 @@ function drawStatus(...)
 
   -- shortcut
   local tb = rectangles.status_textbox
-  logdebug("Textbox shape: ".. tb:inspect() )
+  --logdebug("Textbox shape: ".. tb:inspect() )
   gfx.printf( txt, tb.x, tb.y, tb.width )
 
 end
@@ -592,9 +592,9 @@ function dispatchAction(action_name, x, y)
   local action_allowed = isActionAllowed(action_name)
   local click_within_field = isPointInGameField(x, y)
 
-  logdebug("Action name: "..action_name)
-  logdebug("Action allowed:"..action_allowed)
-  logdebug("Click in field: "..click_within_field)
+  logdebug("Action name: ".. action_name)
+  logdebug("Action allowed: %s", action_allowed)
+  logdebug("Click in field: %s", click_within_field)
 
   if action_allowed then
     flowUpdateTimer()
