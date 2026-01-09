@@ -343,10 +343,10 @@ end
 
 function getNeighbourPositions(i, j)
   local result = { }
-  local i_min = math.min(i-1, 1) 
-  local i_max = math.max(i+1, config.cols)
-  local j_min = math.min(j-1, 1)
-  local j_max = math.max(j+1, config.rows)
+  local i_min = math.max(i-1, 1)
+  local i_max = math.min(i+1, config.cols)
+  local j_min = math.max(j-1, 1)
+  local j_max = math.min(j+1, config.rows)
   for n = i_min, i_max do
     for m = j_min, j_max do
       local is_original = (n==i) and (m==j)
@@ -378,7 +378,7 @@ end
 --- modify game state
 
 function flowInitGrid() 
-  grid = {}
+  grid = { }
   for i = 1, config.cols do
     local col = {}
     for j = 1, config.rows do
@@ -411,7 +411,7 @@ function flowPlaceTrap(i,j)
 
   local neighbours = getNeighbourPositions(i,j)
   for idx, position in ipairs(neighbours) do
-    local pos_i, pos_j = table.unpack(position)
+    local pos_i, pos_j = unpack(position)
     local neighbour = grid[ pos_i ][ pos_j ]
     neighbour.n_traps_nearby = neighbour.n_traps_nearby + 1
   end
@@ -422,11 +422,11 @@ function flowTrapsPlacement(i,j)
   local positions = getNonNeighbourPositions( i, j )
   local n = #positions
   local m = math.min( config.n_traps, n )
-  for pos in positions do
+  for ipos, pos in ipairs(positions) do
     local p = (m / n)
     local selected = math.random() < p
     if selected then
-      flowPlaceTrap( table.unpack(pos) )
+      flowPlaceTrap( unpack(pos) )
       m = m - 1
     end
     n = n - 1
@@ -488,6 +488,9 @@ function flowEvaluateGameStatus(i,j)
  
   if counters.blown > 0 then
     state.status = 'lost'
+    for n, cell in ipairs(traps) do
+      cell.exposed = true
+    end
   end 
 end 
 
