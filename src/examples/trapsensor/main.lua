@@ -69,11 +69,12 @@ function initGridConfig()
   local mp = rectangles.main_panel
   local trap_rate = TRAP_PERCENT / 100
 
-  config.cols = math.floor( mp.width / CELL_SIZE )
-  config.rows = math.floor( mp.height / CELL_SIZE )
+  config.cell_size = CELL_SIZE
+  config.cols = math.floor( mp.width / config.cell_size )
+  config.rows = math.floor( mp.height / config.cell_size )
   config.n_cells = config.cols * config.rows
   config.n_traps = math.ceil( config.n_cells * trap_rate )
-  
+
 end
 
 function initGameField()
@@ -444,7 +445,9 @@ function flowStart(i,j)
 end
 
 function flowUpdateTimer()
-  counters.seconds = os.time() - state.started
+  if state.started then
+    counters.seconds = os.time() - state.started
+  end
 end
 
 function flowTrackClick() 
@@ -583,7 +586,7 @@ function dispatchAction(action_name, x, y)
   local click_within_field = isPointInGameField(x, y)
 
   if action_allowed then
-    flowUpdateTImer()
+    flowUpdateTimer()
     if click_within_field then
       local i, j = detectCellPosition(x,y)
 
