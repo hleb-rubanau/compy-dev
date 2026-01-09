@@ -190,7 +190,7 @@ function statusReadyLine()
   local t = config.n_traps
   local details_txt = string.format(details_tmpl, c, r, t)
 
-  local base_txt = "Ready! Click on any cell to start..."
+  local base_txt = "Ready! Double-click any cell to start..."
   local msg = base_txt .. ' ('..details_txt..')'
   return msg
 end
@@ -360,9 +360,9 @@ end
 
 function getNonNeighbourPositions(i, j)
   local result = { }
-  for n in config.cols do
+  for n = 1, config.cols do
     local i_near = math.abs( i - n ) <= 1
-    for k in config.rows do
+    for m = 1, config.rows do
       local j_near = math.abs( j - m ) <= 1
       local proximity = i_near and j_near
       if not proximity then
@@ -571,7 +571,7 @@ function detectCellPosition(x,y)
   if y_rel == 0 then
     j = 1 
   end
-  return {i,j}
+  return i,j
 end
 
 --- interaction events dispatcher
