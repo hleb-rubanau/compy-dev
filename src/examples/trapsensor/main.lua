@@ -411,7 +411,7 @@ function flowPlaceTrap(i,j)
   table.insert( traps, cell ) -- for later reference
   counters.traps = counters.traps+1
   
-  logdebug("Trap #%s at: (%s, %s)", counters.traps, i, j) 
+  --logdebug("Trap #%s at: (%s, %s)", counters.traps, i, j) 
 
   local neighbours = getNeighbourPositions(i,j)
   for idx, position in ipairs(neighbours) do
@@ -459,28 +459,33 @@ function flowTrackClick()
 end
 
 function flowRevealCell(i,j)
+  logdebug("Revealing cell at (%s,%s)",i,j)
   local cell = grid[i][j]
   if cell.revealed then
+    logdebug("-> Cell already revealed: %s", cell.revealed)
     return 
   end 
   cell.revealed = true
   counters.revealed = counters.revealed + 1
   counters.pending = counters.pending - 1
   if cell.n_traps_nearby == 0 then
-    local positions = getNeighbourPositions(i,j)
-    for _, pos in ipairs(positions) do
+    local neighbours = getNeighbourPositions(i,j)
+    logdebug("FLOODFILL START at (%s,%s): %s neighbours", i, j, #neighbours)
+    for _, pos in ipairs(neighbours) do
       flowRevealCell( pos[1], pos[2] )
       redraw()
     end 
   end
 end 
 
+-- blow or reveal 
 function flowCheckCell(i,j)
   local cell = grid[i][j]
   if cell.trap then
     cell.blown = true
     counters.blown = counters.blown + 1
   else
+    -- lots of logic, factored into separate function
     flowRevealCell(i,j)
   end
 end
@@ -499,10 +504,9 @@ function flowEvaluateGameStatus(i,j)
 end 
 
 function flowReveal(i,j)
-  
   flowTrackClick() 
   
-  flowRevealCell(i,j)
+  flowCheckCell(i,j)
   flowEvaluateGameStatus(i,j)
 
   redraw() 
