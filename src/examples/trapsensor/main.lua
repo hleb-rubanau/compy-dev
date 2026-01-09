@@ -42,6 +42,7 @@ state = { }
 config = { }
 grid = { }
 counters = { }
+traps = { }
 
 function logdebug(...)
   local msg = string.format(...)
@@ -166,92 +167,56 @@ function initUI()
   drawInitialStatus()
 end
 
-function newCell() 
-
-  local cell = {
-    revealed = false,
-    flagged = false,
-    exposed = false,
-    trap = nil,
-    blown = false,
-    traps_around = 0,
-    protected = false
-  }
-  return cell
-end
-
-
-function flowInitGrid() 
-  grid = {}
-  for i = 1, config.cols do
-    local col = {}
-    for j = 1, config.rows do
-      col[j] = newCell()
-    end
-    grid[i] = col
+function statusStatsLine()
+  local named_stats = {
+    'Traps' = counters.traps,
+    'Clicks' = counters.clicks, 
+    'Open' = counters.revealed,
+    'Left' = counters.pending,
+    'Time' = counters.seconds
+  } 
+  local substrings = ''
+  for k,v in pairs(named_stats) do
+    substrings[#substrings+1] = k .. ": " ..v
   end
+  return table.concat(parts, " | ")
 end
 
--- testing all displayable combinations
-function mockPlacement()
-  
-  for i = 1, 10 do -- 0..8 neighbours and mine
-    for j = 1, 4 do -- untouched, flagged, revealed, exposed
+function statusReadyLine() 
+  local details_tmpl = "field: %sx%s, traps: %s"
+  local c = config.cols
+  local r = config.rows
+  local t = config.n_traps
+  local details_txt = string.format(details_tmpl, c, r, t)
 
-      local cell = grid[i][j]
-      if i <= 9 then
-        cell.traps_around = i-1
-      else 
-        cell.trap = true
-      end
-
-      if j == 2 then
-        cell.flagged = true
-      elseif j==3 then
-        cell.revealed = true
-        if cell.trap then
-          cell.blown = true
-        end
-      elseif j==4 then
-        cell.exposed = true
-      end
-
-    end
-  end
-end
-
-function flowInit()
-  state.status = 'ready'
-  state.result = nil
-  state.started = nil
-
-  counters.revealed = 0
-  counters.seconds =  0
-  counters.clicks = 0
-
-  flowInitGrid()
-
-  mockPlacement() -- for display testing
+  local base_txt = "Ready! Click on any cell to start..."
+  local msg = base_txt .. ' ('..details_txt..')'
+  return msg
 end
 
 function redrawStatus()
+  local msg = ''
   if (state.status == 'ready') then
-    drawStatus("Click on any cell to start...")
+    msg = statusReadyLine()
   else
+    msg = statusStatsLine()
+    if (state.status=='finished') then
+      local prefix = string.upper(state.status)
+      msg = '['..prefix..'] '..msg
+    end
   end
+  drawStatus(msg)
 end 
 
 function getCellRectangle(i,j)
   local field = rectangles.field
-  local cell_x = field.x + (i-1)*CELL_SIZE
-  local cell_y = field.y + (j-1)*CELL_SIZE
-
-  return field:new( cell_x, cell_y, CELL_SIZE, CELL_SIZE )
-
+  local c = config.cell_size
+  local cell_x = field.x + (i-1)*c
+  local cell_y = field.y + (j-1)*c
+  return field:new( cell_x, cell_y, c, c)
 end
 
 function getCellBackgroundColor(cell) 
-
   if cell.blown then
     return colors.cell_blown
   elseif cell.revealed then
@@ -259,7 +224,6 @@ function getCellBackgroundColor(cell)
   else
     return colors.cell_hidden
   end
-
 end
 
 function writeCellLabel(canvas, content, fgColor)
@@ -298,23 +262,28 @@ function getCellBackgroundColor(cell)
   end
 end
 
+function getTrapsAroundColor(n_n_traps_nearby)
+  local variants = {
+    4 = colors.cell_revealed_fg_4,
+    3 = colors.cell_revealed_fg_3,
+    2 = colors.cell_revealed_fg_2,
+    1 = colors.cell_revealed_fg_1,
+  }
+  for v = 4,1 do
+    if n_n_traps_nearby >= v then
+      return variants[v]
+    end
+  end
+  return colors.cell_default_fg
+end
+
 function getCellForegroundColor(cell)
   if cell.flagged then
     return colors.cell_flagged_fg
   elseif cell.trap then
     return colors.cell_trap_fg
   else
-    if cell.traps_around >= 4 then
-      return colors.cell_revealed_fg_4
-    elseif cell.traps_around == 3 then
-      return colors.cell_revealed_fg_3
-    elseif cell.traps_around == 2 then
-      return colors.cell_revealed_fg_2
-    elseif cell.traps_around == 1 then
-      return colors.cell_revealed_fg_1
-    else
-      return colors.cell_default_fg
-    end
+    return getTrapsAroundColor(cell.n_traps_nearby)
   end
 end
 
@@ -328,8 +297,8 @@ function getCellDisplayContent(cell)
   elseif cell.flagged then
     return '?'
   elseif cell.revealed then 
-    if cell.traps_around > 0 then
-      return ''..cell.traps_around
+    if cell.n_traps_nearby > 0 then
+      return ''..cell.n_traps_nearby
     end
   end
     
@@ -363,10 +332,280 @@ function redraw()
   redrawStatus()
 end
 
-function actionInit()
-  flowInit()
+--- data structures and functions
+
+function newCell() 
+  local cell = {
+    revealed = false,
+    flagged = false,
+    trap = nil,
+    exposed = false,
+    blown = false,
+    n_traps_nearby = 0,
+  }
+  return cell
+end
+
+function getNeighbourPositions(i, j)
+  local result = { }
+  local i_min = math.min(i-1, 1) 
+  local i_max = math.max(i+1, config.cols)
+  local j_min = math.min(j-1, 1)
+  local j_max = math.max(j+1, config.rows)
+  for n = [i_min, i_max] do
+    for m = [j_min, j_max] do
+      local is_original = (n==i) and (m==j)
+      if not is_original then
+        table.insert(result, {n,m})
+      end
+    end
+  end
+  return result 
+end
+
+function getNonNeighbourPositions(i, j)
+  local result = { }
+  for n in config.cols do
+    local i_near = math.abs( i - n ) <= 1
+    for k in config.rows do
+      local j_near = math.abs( j - m ) <= 1
+      local proximity = i_near and j_near
+      if not proximity then
+        table.insert(result, {n,m})
+      end      
+    end
+  end
+  return result
+end
+
+
+--- flows
+--- modify game state
+
+function flowInitGrid() 
+  grid = {}
+  for i = 1, config.cols do
+    local col = {}
+    for j = 1, config.rows do
+      col[j] = newCell()
+    end
+    grid[i] = col
+  end
+end
+
+function flowInit()
+  state.status = 'ready'
+  state.result = nil
+  state.started = nil
+
+  counters.revealed = 0
+  counters.seconds =  0
+  counters.clicks = 0
+  counters.pending = 0
+  counters.traps = 0
+  
+  flowInitGrid()
+end
+
+function flowPlaceTrap(i,j) 
+  local cell = grid[i][j]
+  cell.trap = true
+  
+  table.insert( traps, cell ) -- for later reference
+  counters.traps = counters.traps+1
+
+  local neighbours = getNeighbourPositions(i,j)
+  for idx, position in ipairs(neighbours) do
+    local pos_i, pos_j = table.unpack(position)
+    local neighbour = grid[ pos_i ][ pos_j ]
+    neighbour.n_traps_nearby = neighbour.n_traps_nearby + 1
+  end
+end
+
+function flowTrapsPlacement(i,j)
+  math.randomseed(os.time())
+  local positions = getNonNeighbourPositions( i, j )
+  local n = #positions
+  local m = math.min( config.n_traps, n )
+  for pos in positions do
+    local p = (m / n)
+    local selected = math.random() < p
+    if selected then
+      flowPlaceTrap( table.unpack(pos) )
+      m = m - 1
+    end
+    n = n - 1
+  end 
+end
+
+function flowStart(i,j) 
+
+  flowTrapsPlacement(i,j)
+  
+  state.status = 'started'
+  state.started = os.time()
+  counters.seconds = 0
+  counters.blown = 0 
+  counters.revealed = 0
+end
+
+function flowUpdateTimer()
+  counters.seconds = os.time() - state.started
+end
+
+function flowTrackClick() 
+  counters.clicks = counters.clicks + 1
+end
+
+function flowRevealCell(i,j)
+  local cell = grid[i][j]
+  if cell.revealed then
+    return 
+  end 
+  cell.revealed = true
+  counters.revealed = counters.revealed + 1
+  counters.pending = counters.pending - 1
+  if cell.n_traps_nearby == 0 then
+    local positions = getNeighbourPositions(i,j)
+    for pos in positions do
+      flowRevealCell( pos[1], pos[2] )
+      redraw()
+    end 
+  end
+end 
+
+function flowCheckCell(i,j)
+  local cell = grid[i][j]
+  if cell.trap then
+    cell.blown = true
+    counters.blown = counters.blown + 1
+  else
+    flowRevealCell(i,j)
+  end
+end
+
+function flowEvaluateGameStatus(i,j)
+  if counters.pending == 0 then
+    state.status = 'win'
+  end
+ 
+  if counters.blown > 0 then
+    state.status = 'lost'
+  end 
+end 
+
+function flowReveal(i,j)
+  
+  flowTrackClick() 
+  
+  flowRevealCell(i,j)
+  flowEvaluateGameStatus(i,j)
+
+  redraw() 
+end
+
+--- actions 
+--- (check conditions, initiate flows and redraws)
+
+function actionFlag(i,j) 
+  local cell = grid[i][j]
+  if not(cell.revealed) then
+    cell.flagged = not(cell.flagged)
+    flowUpdateTimer() 
+    redraw()
+  end
+end
+
+function actionReveal(i,j)
+  local game_not_started = (state.status == 'ready')
+  if game_not_started then
+    flowStart(i,j)
+  end
+  
+  local cell = grid[i][j]
+  local can_be_revealed = not( cell.revealed or cell.flagged )
+  if can_be_revealed then
+    flowReveal(i,j) 
+  end
+  flowUpdateTimer() 
   redraw()
 end
 
+--- events dispatching helpers 
+
+
+function isActionAllowed(action_name)
+  local game_status = state.status
+  if game_status == 'started' then
+    return true
+  end
+  -- first reveal starts the game
+  if game_status == 'ready' then
+    if action_name == 'reveal' then
+      return true
+    end
+  end
+  return false
+end 
+
+function isPointInGameField(x,y)
+  local field = rectangles.field
+  local x_valid = ( x >= field.x ) and ( x <= field.x + field.w)
+  local y_valid = ( x >= field.y ) and ( y <= field.y + field.h)
+  return x_valid and y_valid
+end
+
+function detectCellPosition(x,y)
+  local field = rectangles.field 
+  local x_rel = x - field.x
+  local y_rel = y - field.y
+  local c = config.cell_size
+  local i = math.ceil( x_rel / c )
+  local j = math.ceil( y_rel / c )
+  -- corner cases, left boundary still is cell 
+  if x_rel == 0 then
+    i = 1
+  end
+  if y_rel == 0 then
+    j = 1 
+  end
+  return {i,j}
+end
+
+--- interaction events dispatcher
+
+actions = {
+  'flag' = actionFlag,
+  'reveal' = actionReveal
+}
+
+function dispatchAction(action_name, x, y)
+  local action_allowed = isActionAllowed(action_name)
+  local click_within_field = isPointInGameField(x, y)
+
+  if action_allowed then
+    flowUpdateTImer()
+    if click_within_field then
+      local i, j = detectCellPosition(x,y)
+
+      local action = actions[action_name]
+      action( i, j )
+    end
+  end
+end
+
+--- interaction events handling
+
+function love.singleclick(x,y)
+  dispatchAction('flag', x, y )
+end
+
+function love.doubleclick(x,y)
+  dispatchAction('reveal', x, y )
+end
+
+--- start 
+
 initUI()
-actionInit() 
+flowInit() 
+redraw()
