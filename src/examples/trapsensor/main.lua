@@ -169,11 +169,11 @@ end
 
 function statusStatsLine()
   local named_stats = {
-    'Traps' = counters.traps,
-    'Clicks' = counters.clicks, 
-    'Open' = counters.revealed,
-    'Left' = counters.pending,
-    'Time' = counters.seconds
+    Traps = counters.traps,
+    Clicks = counters.clicks, 
+    Open = counters.revealed,
+    Left = counters.pending,
+    Time = counters.seconds
   } 
   local substrings = ''
   for k,v in pairs(named_stats) do
@@ -262,16 +262,10 @@ function getCellBackgroundColor(cell)
   end
 end
 
-function getTrapsAroundColor(n_n_traps_nearby)
-  local variants = {
-    4 = colors.cell_revealed_fg_4,
-    3 = colors.cell_revealed_fg_3,
-    2 = colors.cell_revealed_fg_2,
-    1 = colors.cell_revealed_fg_1,
-  }
+function getTrapsAroundColor(n_traps_nearby)
   for v = 4,1 do
-    if n_n_traps_nearby >= v then
-      return variants[v]
+    if n_traps_nearby >= v then
+      return colors["cell_revealed_fg_"..v]
     end
   end
   return colors.cell_default_fg
@@ -352,8 +346,8 @@ function getNeighbourPositions(i, j)
   local i_max = math.max(i+1, config.cols)
   local j_min = math.min(j-1, 1)
   local j_max = math.max(j+1, config.rows)
-  for n = [i_min, i_max] do
-    for m = [j_min, j_max] do
+  for n = i_min, i_max do
+    for m = j_min, j_max do
       local is_original = (n==i) and (m==j)
       if not is_original then
         table.insert(result, {n,m})
@@ -580,8 +574,8 @@ end
 --- interaction events dispatcher
 
 actions = {
-  'flag' = actionFlag,
-  'reveal' = actionReveal
+  flag = actionFlag,
+  reveal = actionReveal
 }
 
 function dispatchAction(action_name, x, y)
