@@ -464,7 +464,7 @@ function flowRevealCell(i,j)
   counters.pending = counters.pending - 1
   if cell.n_traps_nearby == 0 then
     local positions = getNeighbourPositions(i,j)
-    for pos in positions do
+    for _, pos in ipairs(positions) do
       flowRevealCell( pos[1], pos[2] )
       redraw()
     end 
