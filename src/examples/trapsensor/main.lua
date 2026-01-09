@@ -50,6 +50,14 @@ function logdebug(...)
   print(msg)
 end
 
+function logdebug_counters()
+  logdebug("COUNTERS: {")
+  for k,v in pairs(counters) do
+    logdebug("%s = %s", k,v)
+  end
+  logdebug("  }")
+end
+
 function initPanels()
   --- base geometries and coordinates
 
@@ -325,6 +333,7 @@ function redrawField()
 end
 
 function redraw()
+  logdebug("REDRAWING")
   redrawField()
   redrawStatus()
 end
@@ -438,7 +447,7 @@ function flowTrapsPlacement(i,j)
 end
 
 function flowStart(i,j) 
-
+  logdebug("GAME STARTS...")
   flowTrapsPlacement(i,j)
   
   state.status = 'started'
@@ -446,6 +455,7 @@ function flowStart(i,j)
   counters.seconds = 0
   counters.blown = 0 
   counters.revealed = 0
+  counters.pending = config.n_cells - counters.traps
 end
 
 function flowUpdateTimer()
@@ -461,8 +471,8 @@ end
 function flowRevealCell(i,j)
   logdebug("Revealing cell at (%s,%s)",i,j)
   local cell = grid[i][j]
-  if cell.revealed then
-    logdebug("-> Cell already revealed: %s", cell.revealed)
+  if cell.revealed or cell.trap then
+    logdebug("-> Backoff: revealed=%s, trap=%s", cell.revealed, cell.trap)
     return 
   end 
   cell.revealed = true
@@ -508,7 +518,8 @@ function flowReveal(i,j)
   
   flowCheckCell(i,j)
   flowEvaluateGameStatus(i,j)
-
+  
+  logdebug_counters()
   redraw() 
 end
 
