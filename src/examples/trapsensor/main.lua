@@ -183,14 +183,27 @@ function initUI()
   drawInitialStatus()
 end
 
-function statusStatsLine()
+function calculateStats()
+  local c = counters
   local named_stats = {
-    Traps = counters.traps,
-    Clicks = counters.clicks, 
-    Open = counters.revealed,
-    Left = counters.pending,
-    Time = counters.seconds
+    Traps = c.traps,
+    Clicks = c.clicks,
+    Open = c.revealed,
+    Left = c.pending,
+    Time = c.seconds,
+    Progress = f("Clicks: %s (%s s)", c.clicks, c.seconds),
   } 
+  return named_stats
+end
+
+function statusStatsLine()
+  local f = string.format
+  local named_stats = {
+    Clicks = f("%s (%s s)", c.clicks, c.seconds),
+    Opened = f("%s / %s", c.revealed, c.revealed + c.pending),
+    Flagged = f("%s / %s", c.flagged, c.traps)
+  }
+
   local substrings = { }
   for k,v in pairs(named_stats) do
     substrings[#substrings+1] = k .. ": " ..v
