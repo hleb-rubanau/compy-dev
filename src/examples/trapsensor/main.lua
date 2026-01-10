@@ -219,7 +219,7 @@ function redrawStatus()
   else
     msg = statusStatsLine()
     if (state.status=='finished') then
-      local prefix = string.upper(state.status)
+      local prefix = string.upper(state.result)
       msg = '['..prefix..'] '..msg
     end
   end
@@ -515,11 +515,13 @@ end
 
 function flowEvaluateGameStatus(i,j)
   if counters.pending == 0 then
-    state.status = 'win'
+    state.status = 'finished'
+    state.result = 'win'
   end
  
   if counters.blown > 0 then
-    state.status = 'lost'
+    state.status = 'finished'
+    state.result = 'lost'
     for n, cell in ipairs(traps) do
       cell.exposed = true
     end
