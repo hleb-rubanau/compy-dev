@@ -6,7 +6,7 @@ Rectangle = require("rectangle")
 
 TRAP_PERCENT=15
 CELL_SIZE=32 
-FLOODFILL=false
+FLOODFILL=true
 
 colors = { -- white, black, bright, yellow, green, magenta, cyan, blue, red, with_alpha()
   bg = Color[Color.blue],
@@ -81,6 +81,7 @@ function initGridConfig()
   local trap_rate = TRAP_PERCENT / 100
 
   config.cell_size = CELL_SIZE
+  config.floodfill = FLOODFILL
   config.cols = math.floor( mp.width / config.cell_size )
   config.rows = math.floor( mp.height / config.cell_size )
   config.n_cells = config.cols * config.rows
@@ -144,20 +145,17 @@ function drawStatus(...)
 
   local txt = string.format(...)
 
-  logdebug("STATUS: " .. txt)
+  --logdebug("STATUS: " .. txt)
   
   -- required to clean up anything previously written
   drawStatusPanel() 
-
-  write_to_input("STATUS: "..txt)
-  local r = user_input() 
 
   gfx.setColor(colors.status_panel_fg)
   gfx.setFont(fonts.status) 
 
   -- shortcut
   local tb = rectangles.status_textbox
-  logdebug("Textbox shape: ".. tb:inspect() )
+  --logdebug("Textbox shape: ".. tb:inspect() )
   gfx.printf( txt, tb.x, tb.y, tb.width )
 
 end
@@ -534,7 +532,7 @@ function flowReveal(i,j)
   flowCheckCell(i,j)
   flowEvaluateGameStatus(i,j)
   
-  logdebug_counters()
+  --logdebug_counters()
   redraw() 
 end
 
