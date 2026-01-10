@@ -12,21 +12,15 @@ colors = { -- white, black, bright, yellow, green, magenta, cyan, blue, red, wit
   bg = Color[Color.blue],
   status_panel_bg = Color[Color.bright],
   status_panel_fg = Color[Color.green],
-  text = Color[Color.red],
-  yellow = Color[Color.yellow],
   field_border = Color[Color.white],
   cell_not_revealed_bg = { 0.5, 0.5, 0.5 },
-  --cell_revealed_bg = { 0.25, 0.25, 0.25 },
   cell_revealed_bg = Color[Color.green],
   cell_blown_bg = Color[Color.red],
   cell_flagged_bg = Color[Color.yellow],
   cell_trap_fg = Color[Color.black],
-  --cell_flagged_fg = { 1, 0.6, 0 }, -- orange
   cell_flagged_fg = Color[Color.red], 
   cell_default_fg = Color[Color.blue],
-  --cell_default_fg = Color[Color.cyan],
   cell_revealed_fg_1 = Color[Color.white],
-  --cell_revealed_fg_2 = Color[Color.cyan],
   cell_revealed_fg_2 = Color[Color.black],
   cell_revealed_fg_3 = Color[Color.magenta],
   cell_revealed_fg_4 = Color[Color.red]
@@ -275,9 +269,12 @@ function getCellBackgroundColor(cell)
 end
 
 function getTrapsAroundColor(n_traps_nearby)
-  for v = 4,1,-1 do
+  for v = 8,1,-1 do
     if n_traps_nearby >= v then
-      return colors["cell_revealed_fg_"..v]
+      local color_name = "cell_revealed_fg_"..v
+      if colors[color_name] then
+        return colors[color_name]
+      end
     end
   end
   return colors.cell_default_fg
