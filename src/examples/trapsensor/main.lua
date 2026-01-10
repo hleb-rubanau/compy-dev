@@ -183,32 +183,14 @@ function initUI()
   drawInitialStatus()
 end
 
-function calculateStats()
-  local c = counters
-  local named_stats = {
-    Traps = c.traps,
-    Clicks = c.clicks,
-    Open = c.revealed,
-    Left = c.pending,
-    Time = c.seconds,
-    Progress = f("Clicks: %s (%s s)", c.clicks, c.seconds),
-  } 
-  return named_stats
-end
-
 function statusStatsLine()
   local c = counters
   local f = string.format
-  local named_stats = {
-    Clicks = f("%s (%s s)", c.clicks, c.seconds),
-    Opened = f("%s / %s", c.revealed, c.revealed + c.pending),
-    Flagged = f("%s / %s", c.flagged, c.traps)
+  local substrings = { 
+    f("Flagged: %s/%s", c.flagged, c.traps),
+    f("Opened: %s/%s", c.revealed, config.n_cells ),
+    f("Clicks: %s (%s s)", c.clicks, c.seconds)
   }
-
-  local substrings = { }
-  for k,v in pairs(named_stats) do
-    substrings[#substrings+1] = k .. ": " ..v
-  end
   return table.concat(substrings, " | ")
 end
 
