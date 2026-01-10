@@ -197,6 +197,7 @@ function calculateStats()
 end
 
 function statusStatsLine()
+  local c = counters
   local f = string.format
   local named_stats = {
     Clicks = f("%s (%s s)", c.clicks, c.seconds),
@@ -471,14 +472,16 @@ function flowTrapsPlacement(i,j)
 end
 
 function flowStart(i,j) 
-  logdebug("GAME STARTS...")
+  --logdebug("GAME STARTS...")
   flowTrapsPlacement(i,j)
   
   state.status = 'started'
   state.started = os.time()
+  counters.clicks = 0
   counters.seconds = 0
-  counters.blown = 0 
   counters.revealed = 0
+  counters.flagged = 0
+  counters.blown = 0 
   counters.pending = config.n_cells - counters.traps
 end
 
@@ -561,6 +564,10 @@ function actionFlag(i,j)
   local cell = grid[i][j]
   if not(cell.revealed) then
     cell.flagged = not(cell.flagged)
+
+    local adjust = cell.flagged and 1 or -1
+    counters.flagged = counters.flagged + adjust
+
     flowUpdateTimer() 
     redraw()
   end
