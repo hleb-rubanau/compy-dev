@@ -6,6 +6,7 @@ Rectangle = require("rectangle")
 
 TRAP_PERCENT=15
 CELL_SIZE=32 
+FLOODFILL=false
 
 colors = { -- white, black, bright, yellow, green, magenta, cyan, blue, red, with_alpha()
   bg = Color[Color.blue],
@@ -37,7 +38,8 @@ fonts = {
   cell   = gfx.newFont(28)
 } 
 
--- to be initialized
+-- runtime tables, to be initialized
+
 rectangles = { }
 state = { }
 config = { }
@@ -142,15 +144,20 @@ function drawStatus(...)
 
   local txt = string.format(...)
 
+  logdebug("STATUS: " .. txt)
+  
   -- required to clean up anything previously written
   drawStatusPanel() 
+
+  write_to_input("STATUS: "..txt)
+  local r = user_input() 
 
   gfx.setColor(colors.status_panel_fg)
   gfx.setFont(fonts.status) 
 
   -- shortcut
   local tb = rectangles.status_textbox
-  --logdebug("Textbox shape: ".. tb:inspect() )
+  logdebug("Textbox shape: ".. tb:inspect() )
   gfx.printf( txt, tb.x, tb.y, tb.width )
 
 end
@@ -332,10 +339,16 @@ function redrawField()
   end
 end
 
-function redraw()
-  logdebug("REDRAWING")
-  redrawField()
+function redraw(i,j)
+  if i then
+    logdebug("REDRAWING cell at (%s,%s)",i,j)
+    drawCell(i,j)
+  else
+    logdebug("REDRAWING FIELD")
+    redrawField()
+  end
   redrawStatus()
+  --love.draw() -- explicitly call, otherwise screen is not updated
 end
 
 --- data structures and functions
@@ -478,7 +491,7 @@ function flowRevealCell(i,j)
   cell.revealed = true
   counters.revealed = counters.revealed + 1
   counters.pending = counters.pending - 1
-  if cell.n_traps_nearby == 0 then
+  if cell.n_traps_nearby == 0 and config.floodfill then
     local neighbours = getNeighbourPositions(i,j)
     logdebug("FLOODFILL START at (%s,%s): %s neighbours", i, j, #neighbours)
     for _, pos in ipairs(neighbours) do
@@ -625,6 +638,7 @@ end
 --- interaction events handling
 
 function love.singleclick(x,y)
+  drawStatus("CLICK!")
   dispatchAction('flag', x, y )
 end
 
@@ -638,7 +652,12 @@ function love.keyreleased(k)
   end
 end
 
+function love.draw()
+  redraw()
+end
+
 --- start 
 
 initUI()
 actionInit()
+--drawStatus("INITIALIZED")
