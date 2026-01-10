@@ -352,10 +352,10 @@ end
 
 function redraw(i,j)
   if i then
-    logdebug("REDRAWING cell at (%s,%s)",i,j)
+    --logdebug("REDRAWING cell at (%s,%s)",i,j)
     drawCell(i,j)
   else
-    logdebug("REDRAWING FIELD")
+    --logdebug("REDRAWING FIELD")
     redrawField()
   end
   redrawStatus()
