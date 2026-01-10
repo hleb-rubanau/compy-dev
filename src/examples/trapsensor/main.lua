@@ -8,7 +8,11 @@ TRAP_PERCENT=15
 FLOODFILL=true
 
 CELL_SIZE=32
+CELL_FONTSIZE = 28
 STATUS_PANEL_SIZE = 0.1
+STATUS_PANEL_FONTSIZE = 24
+STATUS_PANEL_PADDING  = STATUS_PANEL_FONTSIZE / 2
+STATUS_PANEL_ALIGN = 'center'
 
 colors = { -- white, black, bright, yellow, green, magenta, cyan, blue, red, with_alpha()
   main_panel_bg = Color[Color.blue],
@@ -30,8 +34,8 @@ colors = { -- white, black, bright, yellow, green, magenta, cyan, blue, red, wit
 
 fonts = {
   --status = gfx.newFont(32),
-  status = gfx.newFont(24),
-  cell   = gfx.newFont(28)
+  status = gfx.newFont(STATUS_PANEL_FONTSIZE),
+  cell   = gfx.newFont(CELL_FONTSIZE)
 } 
 
 -- runtime tables, to be initialized
@@ -97,9 +101,7 @@ function initStatusTextBox()
   local sp = rectangles.status_panel
 
   local textbox_height = font:getHeight() 
-  --local padding = ( sp.height - textbox_height ) / 2
-  local padding = 5
-  local textbox_width = sp.width - 2*padding
+  local textbox_width = sp.width - 2*STATUS_PANEL_PADDING
 
   local textbox = sp:central(textbox_width, textbox_height)
   rectangles.status_textbox = textbox
@@ -149,7 +151,7 @@ function drawStatus(...)
   -- shortcut
   local tb = rectangles.status_textbox
   --logdebug("Textbox shape: ".. tb:inspect() )
-  gfx.printf( txt, tb.x, tb.y, tb.width )
+  gfx.printf( txt, tb.x, tb.y, tb.width, STATUS_PANEL_ALIGN)
 
 end
 
