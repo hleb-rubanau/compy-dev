@@ -5,11 +5,13 @@ Rectangle = require("rectangle")
 --- constants 
 
 TRAP_PERCENT=15
-CELL_SIZE=32 
 FLOODFILL=true
 
+CELL_SIZE=32
+STATUS_PANEL_SIZE = 0.1
+
 colors = { -- white, black, bright, yellow, green, magenta, cyan, blue, red, with_alpha()
-  bg = Color[Color.blue],
+  main_panel_bg = Color[Color.blue],
   status_panel_bg = Color[Color.bright],
   status_panel_fg = Color[Color.green],
   field_border = Color[Color.white],
@@ -61,11 +63,8 @@ function initPanels()
 
   local screen = Rectangle:new(screen_w, screen_h)
 
-  -- leave space for console/input lines
-  local ui_canvas = screen:upper(0.89)
-
-  rectangles.main_panel   = ui_canvas:upper(0.85)
-  rectangles.status_panel = ui_canvas:lower(0.15)
+  rectangles.main_panel   = screen:upper(1-STATUS_PANEL_SIZE)
+  rectangles.status_panel = screen:lower(STATUS_PANEL_SIZE)
 
 end 
 
@@ -124,7 +123,7 @@ function drawGameField()
 end
 
 function drawMainPanel()
-  gfx.setColor(colors.bg)
+  gfx.setColor(colors.main_panel_bg)
   gfx.rectangle("fill", rectangles.main_panel:x_y_w_h() )
 end 
 
