@@ -580,7 +580,7 @@ end
 function isPointInGameField(x,y)
   local field = rectangles.field
   local x_valid = ( x >= field.x ) and ( x <= field.x + field.w)
-  local y_valid = ( x >= field.y ) and ( y <= field.y + field.h)
+  local y_valid = ( y >= field.y ) and ( y <= field.y + field.h)
   return x_valid and y_valid
 end
 
