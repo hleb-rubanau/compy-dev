@@ -608,7 +608,9 @@ function EditorController:_normal_mode_keys(k)
           local _, n = buf:replace_content(newtext)
 
           local reload_after = n
-          if n > 1 then
+          local ct = bufv.content_type
+          -- plaintext does not produce oversized blocks
+          if (ct=='lua' and n > 1) then
             local legit_size = bufv:get_size()
             for i, chunk in ipairs(newtext) do
               if chunk.tag ~= "empty" then
