@@ -211,7 +211,7 @@ end
 --- @return boolean
 --- @return VerticalDir?
 --- @return number? diff
-function BufferView:is_selection_visible()
+function BufferView:is_selection_visible(tolerate_oversize)
   local sel = self.buffer:get_selection()
 
   local s_w
@@ -226,6 +226,13 @@ function BufferView:is_selection_visible()
   local sel_e = s_w[#s_w]
   local r = self.content:get_range()
   if r:inc(sel_s) and r:inc(sel_e) then return true end
+
+  -- handle monster blocks
+  if tolerate_oversize then
+    if (sel_s == r.start) and (sel_e > r.fin) then
+      return true
+    end
+  end
 
   local dir = (function()
     if r.start > sel_s then return 'up' end

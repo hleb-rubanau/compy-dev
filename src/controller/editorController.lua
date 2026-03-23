@@ -590,7 +590,8 @@ function EditorController:_normal_mode_keys(k)
   local function submit()
     local bufv = self.view:get_current_buffer()
     local function replace(newtext)
-      if bufv:is_selection_visible() then
+      local tolerate_oversize=true
+      if bufv:is_selection_visible(tolerate_oversize) then
         if buf:loaded_is_sel(true) then
           local _, n = buf:replace_content(newtext)
           buf:clear_loaded()
