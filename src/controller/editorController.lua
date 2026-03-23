@@ -606,11 +606,25 @@ function EditorController:_normal_mode_keys(k)
       if bufv:is_selection_visible(tolerate_oversize) then
         if buf:loaded_is_sel(true) then
           local _, n = buf:replace_content(newtext)
+
+          local reload_after = n
+          if n > 1 then
+            local legit_size = bufv:get_size()
+            for i, chunk in ipairs(newtext) do
+              if chunk.tag ~= "empty" then
+                if chunk.pos:len() > legit_size then
+                  reload_after = i - 1
+                  break
+                end
+              end
+            end
+          end
+
           buf:clear_loaded()
           self:save(buf)
           input:clear()
           self.view:refresh()
-          self:_move_sel('down', n)
+          self:_move_sel('down', reload_after)
           load_selection()
           self:update_status()
         else

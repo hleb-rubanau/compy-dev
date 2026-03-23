@@ -120,6 +120,11 @@ function BufferView:get_state()
   }
 end
 
+--- @return integer
+function BufferView:get_size()
+  return self.LINES
+end
+
 --- @param moved integer?
 function BufferView:refresh(moved)
   if not self.content then
