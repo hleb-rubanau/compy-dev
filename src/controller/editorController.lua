@@ -614,10 +614,8 @@ function EditorController:_normal_mode_keys(k)
     local to_lines = function(x) return x.lines end
 
     local function replace(newtext)
-      local oversized = first_oversized_chunk(newtext)
-      local tolerate_oversize = (oversized and oversized > 1 )
 
-      if not bufv:is_selection_visible(tolerate_oversize) then
+      if not bufv:is_selection_visible(true) then
         return bufv:follow_selection()
       end
 
@@ -627,6 +625,7 @@ function EditorController:_normal_mode_keys(k)
         return
       end
 
+      local oversized = first_oversized_chunk(newtext)
       if oversized then
         local refactored = table.slice(newtext, 1, oversized-1)
         local unsaved = table.slice(newtext, oversized)
