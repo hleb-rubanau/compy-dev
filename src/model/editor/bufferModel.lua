@@ -444,7 +444,7 @@ end
 function BufferModel:insert_content(t, lbn)
   local num = lbn or self:get_selection()
   local len = self:get_content_length() + 1
-  if lbn < 1 or lbn > len then
+  if num < 1 or num > len then
     return false
   end
   if self.content_type == 'lua' then
