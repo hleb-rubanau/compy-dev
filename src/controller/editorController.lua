@@ -601,41 +601,55 @@ function EditorController:_normal_mode_keys(k)
   --- handlers
   local function submit()
     local bufv = self.view:get_current_buffer()
-    local function replace(newtext)
-      local tolerate_oversize=true
-      if bufv:is_selection_visible(tolerate_oversize) then
-        if buf:loaded_is_sel(true) then
-          local _, n = buf:replace_content(newtext)
-
-          local reload_after = n
-          local ct = bufv.content_type
-          -- plaintext does not produce oversized blocks
-          if (ct=='lua' and n > 1) then
-            local legit_size = bufv:get_size()
-            for i, chunk in ipairs(newtext) do
-              if chunk.tag ~= "empty" then
-                if chunk.pos:len() > legit_size then
-                  reload_after = i - 1
-                  break
-                end
-              end
-            end
-          end
-
-          buf:clear_loaded()
-          self:save(buf)
-          input:clear()
-          self.view:refresh()
-          self:_move_sel('down', reload_after)
-          load_selection()
-          self:update_status()
-        else
-          buf:select_loaded()
-          bufv:follow_selection()
-        end
-      else
-        bufv:follow_selection()
+    local is_lua = bufv.content_type == 'lua'
+    local size_limit = bufv:get_size()
+    local is_oversized_chunk = function(v)
+      return (v and v.pos and v.pos:len() > size_limit)
+    end
+    local first_oversized_chunk = function(chunks)
+      if is_lua then
+        return table.find_by(chunks, is_oversized_chunk)
       end
+    end
+    local to_lines = function(x) return x.lines end
+
+    local function replace(newtext)
+      local oversized = first_oversized_chunk(newtext)
+      local tolerate_oversize = (oversized and oversized > 1 )
+
+      if not bufv:is_selection_visible(tolerate_oversize) then
+        return bufv:follow_selection()
+      end
+
+      if not buf:loaded_is_sel(true) then
+        buf:select_loaded()
+        bufv:follow_selection()
+        return
+      end
+
+      if oversized then
+        local refactored = table.slice(newtext, 1, oversized-1)
+        local unsaved = table.slice(newtext, oversized)
+        local _, n = buf:insert_content(refactored)
+        local unsaved_lines = table.map(unsaved, to_lines)
+        local unsaved_raw = table.flatten(unsaved_lines)
+        self:save(buf)
+        self:_move_sel('down', n)
+        buf:set_loaded()
+        input:set_text(unsaved_raw)
+        input:jump_home()
+        self.view:refresh()
+      else
+        local _, n = buf:replace_content(newtext)
+        self:save(buf)
+        self:_move_sel('down', n)
+        buf:clear_loaded()
+        input:clear()
+        self.view:refresh()
+        load_selection()
+      end
+
+      self:update_status()
     end
 
     if Key.ctrl()
