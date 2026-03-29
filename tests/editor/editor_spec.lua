@@ -521,7 +521,7 @@ describe('Editor #editor', function()
 
           local input, buffer = session:open(f_orig, 1)
           session:select_and_open_block(1, f_orig)
-          session:submit(new_code, true)
+          session:submit(new_code)
 
           assert.is_true(input:is_empty(), "input emptified")
           assert.same(4, buffer.selection, "selection moved")
