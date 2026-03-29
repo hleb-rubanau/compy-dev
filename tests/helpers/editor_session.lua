@@ -15,15 +15,26 @@ function EditorSession:open(src, nb)
   self.controller:open("test.lua", src, self.save)
   local input = self.controller.input
   local buffer = self.controller:get_active_buffer()
-  local cont = buffer:get_text_content()
-  assert.same(string.lines(src.."\n"), 
+
+  local srclines = string.lines(src)
+  local has_trailing_nl = ( srclines[#srclines] == '' )
+  local expected = (has_trailing_nl and src or src.."\n")
+
+  assert.same(string.lines(expected),
               buffer:get_text_content(),
               "desired content loaded")
   if nb then
-    assert.same(nb+1, 
-                buffer:get_content_length(),
-                fmt("Blocks loaded: %s original +1 extra", nb)
-               )
+    if has_trailing_nl then
+      assert.same(nb,
+                  buffer:get_content_length(),
+                  fmt("Blocks loaded: %s", nb)
+                 )
+    else
+      assert.same(nb+1,
+                  buffer:get_content_length(),
+                  fmt("Blocks loaded: %s original +1 extra", nb)
+                 )
+    end
   end
   self.input = input
   self.buffer = buffer
@@ -33,9 +44,8 @@ end
 function EditorSession:select_block(n, target_content)
   local s = self.buffer.selection
   local dir = (s > n) and "up" or "down"
-  local step = (s > n) and -1 or 1
-
-  for i = s, n, step do
+  local steps = math.abs(s-n)
+  for i = 1, steps do
     self.mock.keystroke(dir, self.press)
   end
 
@@ -64,4 +74,9 @@ function EditorSession:alter_input(newtext)
   local newlines = string.lines(newtext)
   self.input:set_text(newlines)
   assert.same( newlines, self.input:get_text(), "input altered")
+end
+
+function EditorSession:submit(newtext)
+  self:alter_input(newtext)
+  self.mock.keystroke("return", self.press)
 end
