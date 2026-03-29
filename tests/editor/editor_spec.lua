@@ -464,43 +464,48 @@ describe('Editor #editor', function()
       assert.same(string.unlines(modified), after)
     end)
 
-    it('edits block', function()
+    describe('edits blocks', function()
       require("tests.helpers.codesnippets")
       require("tests.helpers.editor_session")
       local src = snippets_to_code
       local fmt = string.format
 
-      local f_orig = mock_func_snippet("orig")
-      local f_modified = mock_func_snippet("modified")
-      local f_untouched = mock_func_snippet("untouched")
 
-      local src_orig = src(f_orig, '', f_untouched)
-      local src_exp = src(f_modified, '', f_untouched, '')
+      setup(function() 
+        controller, press = wire(TU.mock_view_cfg())
+        save, savefile = TU.get_save_function({})
+        session = EditorSession(controller, 
+                                      press, 
+                                      save, 
+                                      mock)
+      end)
 
-      local controller, press = wire(TU.mock_view_cfg())
-      local save, savefile = TU.get_save_function({})
-      local session = EditorSession(controller, 
-                                    press, 
-                                    save, 
-                                    mock)
+      it('simple altering', function()
 
-      local input, buffer = session:open(src_orig, 3)
-      
+        local f_orig = mock_func_snippet("orig")
+        local f_modified = mock_func_snippet("modified")
+        local f_untouched = mock_func_snippet("untouched")
 
-      session:select_and_open_block(1, f_orig)
-      session:alter_input(f_modified)
-      mock.keystroke('return', press)
+        local src_orig = src(f_orig, '', f_untouched)
+        local src_exp = src(f_modified, '', f_untouched, '')
 
-      session:select_block(1)
+        local input, buffer = session:open(src_orig, 3)
+        session:select_and_open_block(1, f_orig)
+        session:alter_input(f_modified)
+        mock.keystroke('return', press)
 
-      assert.same(string.lines(f_modified),
-                  buffer:get_selected_text(),
-                  "selection replaced with mofidied block")
-      assert.same(string.lines(src_exp),
-                  buffer:get_text_content(),
-                  "buffer contains expected altered content")
-      assert.same(src_exp, savefile(),
-                  "saved content has altered block")
+        session:select_block(1)
+
+        assert.same(string.lines(f_modified),
+                    buffer:get_selected_text(),
+                    "selection replaced with mofidied block")
+        assert.same(string.lines(src_exp),
+                    buffer:get_text_content(),
+                    "buffer contains expected altered content")
+        assert.same(src_exp, savefile(),
+                    "saved content has altered block")
+      end)
+
     end)
 
   end)
