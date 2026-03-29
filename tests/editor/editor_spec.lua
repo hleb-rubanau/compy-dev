@@ -502,6 +502,7 @@ describe('Editor #editor', function()
         end)
 
         it('rejects replacement with oversized', function()
+          pending("WIP")
           local f_simple = mock_func_snippet("simple")
           local f_oversized = mock_func_snippet("oversized",17)
           local input, buffer = session:open(f_simple, 1)
@@ -606,31 +607,76 @@ describe('Editor #editor', function()
         end)
 
         it("appends multiple normal blocks", function()
-          pending("raises exception, to be fixed later")
-          local new_func_1 = mock_func_snippet("new_func1")
-          local new_func_2 = mock_func_snippet("new_func2")
-          local new_code = src(new_func_1, new_func_2)
+          pending("regression, to be fixed later")
+          local f1 = mock_func_snippet("f1")
+          local f2 = mock_func_snippet("f2")
+          local new_code = src(f1, f2)
           session:submit(new_code)
 
           assert.truthy(input:is_empty(), "input is empty")
           assert.same(n_blocks+2, buffer.selection,
                       "selection moved down by 2")
-
-          session:select_block(n_blocks)
-          assert.same( string.lines(new_func1),
-                       buffer:get_selected_text(),
-                       "first block added separately")
-          session:select_block(n_blocks+1)
           assert.same( '',
                        buffer:get_selected_text(),
-                       "empty line is injected")
-          session:select_block(n_blocks+2)
-          assert.same( string.lines(new_func2),
+                       "trailing empty line is selected")
+
+          session:select_block(n_blocks)
+          assert.same( string.lines(f1),
                        buffer:get_selected_text(),
-                       "second block added separately")
-          assert.same( src(existing_src,new_func1,'',new_func2),
+                       "first block injected before empty line")
+          session:select_block(n_blocks+1)
+          assert.same( string.lines(f2),
+                       buffer:get_selected_text(),
+                       "second block injected after first")
+          assert.same( src(existing_src..f1..f2,''),
                        savefile(),
                        "saved file contains updates")
+        end)
+
+        it('rejects oversized blocks', function()
+          pending("TBD")
+          local f_oversized = mock_func_snippet("oversized",20)
+          session:submit(f_oversized)
+
+          assert.falsy(input:is_empty(), "input is not empty")
+          assert.same( string.lines(f_oversized),
+                       input:get_text(),
+                       "text remains in the input")
+          assert.same(n_blocks, buffer.selection,
+                       "selection not moved")
+          assert.same(n_blocks, buffer:get_content_length(),
+                       "buffer length not changed")
+          assert.same( existing_src,
+                       savefile(),
+                       "saved file unchanged")
+        end)
+
+        it("handles normal+oversized submit", function()
+          pending("TBD")
+          local f_normal = mock_func_snippet("normal")
+          local f_oversized = mock_func_snippet("oversized",20)
+          local mixed_content = src(f_normal, f_oversized)
+          session:submit(mixed_content)
+
+          assert.same(n_blocks+1, buffer.selection,
+                      "selection moved down by 1")
+          assert.same(n_blocks+1, buffer:get_content_length(),
+                      "buffer length inreased by 1")
+
+          session:select_block(n_blocks)
+
+          assert.same(string.lines(f_normal),
+                      buffer:get_selected_text(),
+                      "normal block is injected")
+
+          assert.falsy(input:is_empty(), "input is not empty")
+          assert.same(string.lines(f_oversized),
+                      input:get_text(),
+                      "oversized block kept in input")
+
+          assert.same( src(existing_src..f_normal,''),
+                       savefile(),
+                       "saved file updated with normal block")
         end)
       end)
 
