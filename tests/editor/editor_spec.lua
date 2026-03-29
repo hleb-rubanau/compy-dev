@@ -592,15 +592,43 @@ describe('Editor #editor', function()
           local new_func = mock_func_snippet("new_func")
           session:submit(new_func)
 
+          assert.truthy(input:is_empty(), "input is empty")
           assert.same(n_blocks+1, buffer.selection,
                       "selection moved down by 1")
-          assert.truthy(input:is_empty(), "input is empty")
 
           session:select_block(n_blocks)
           assert.same( string.lines(new_func),
                        buffer:get_selected_text(),
                        "content added as new block")
           assert.same( existing_src..new_func,
+                       savefile(),
+                       "saved file contains updates")
+        end)
+
+        it("appends multiple normal blocks", function()
+          pending("raises exception, to be fixed later")
+          local new_func_1 = mock_func_snippet("new_func1")
+          local new_func_2 = mock_func_snippet("new_func2")
+          local new_code = src(new_func_1, new_func_2)
+          session:submit(new_code)
+
+          assert.truthy(input:is_empty(), "input is empty")
+          assert.same(n_blocks+2, buffer.selection,
+                      "selection moved down by 2")
+
+          session:select_block(n_blocks)
+          assert.same( string.lines(new_func1),
+                       buffer:get_selected_text(),
+                       "first block added separately")
+          session:select_block(n_blocks+1)
+          assert.same( '',
+                       buffer:get_selected_text(),
+                       "empty line is injected")
+          session:select_block(n_blocks+2)
+          assert.same( string.lines(new_func2),
+                       buffer:get_selected_text(),
+                       "second block added separately")
+          assert.same( src(existing_src,new_func1,'',new_func2),
                        savefile(),
                        "saved file contains updates")
         end)
