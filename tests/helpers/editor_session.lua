@@ -48,6 +48,10 @@ function EditorSession:select_block(n, target_content)
   local s = self.buffer.selection
   local dir = (s > n) and "up" or "down"
   local steps = math.abs(s-n)
+  if (not self.input:is_empty()) and (steps > 0) then
+    local jumpkey = dir=='up' and 'home' or 'end'
+    self.mock.keystroke(jumpkey, self.press)
+  end
   for i = 1, steps do
     self.mock.keystroke(dir, self.press)
   end
@@ -79,7 +83,8 @@ function EditorSession:alter_input(newtext)
   assert.same( newlines, self.input:get_text(), "input altered")
 end
 
-function EditorSession:submit(newtext)
+function EditorSession:submit(newtext, ctrl)
   self:alter_input(newtext)
-  self.mock.keystroke("return", self.press)
+  local keycode = ctrl and 'C-return' or 'return'
+  self.mock.keystroke(keycode, self.press)
 end

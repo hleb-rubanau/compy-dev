@@ -612,6 +612,20 @@ function EditorController:_normal_mode_keys(k)
       end
     end
     local to_lines = function(x) return x.lines end
+    local analyze_input = function(newtext)
+      local oversized = first_oversized_chunk(newtext)
+      if not oversized then
+        return newtext, false
+      end
+      if oversized == 1 then
+        return false
+      end
+      local approved = table.slice(newtext, 1, oversized-1)
+      local rejected = table.slice(newtext, oversized)
+      local rejected_lines = table.map(rejected, to_lines)
+      local rejected_raw = table.flatten(rejected_lines)
+      return approved, rejected_raw
+    end
 
     local function replace(newtext)
       if not bufv:is_selection_visible(true) then
@@ -624,33 +638,25 @@ function EditorController:_normal_mode_keys(k)
         return
       end
 
-      local oversized = first_oversized_chunk(newtext)
-      if oversized then
-        if oversized == 1 then
-          -- nothing refactorable, should set error?
-          return
-        end
-        local refactored = table.slice(newtext, 1, oversized-1)
-        local unsaved = table.slice(newtext, oversized)
-        local _, n = buf:insert_content(refactored)
-        local unsaved_lines = table.map(unsaved, to_lines)
-        local unsaved_raw = table.flatten(unsaved_lines)
+      local approved, rejected = analyze_input(newtext)
+      if not approved then return end
+      if rejected then
+        local _, n = buf:insert_content(approved)
         self:save(buf)
         self:_move_sel('down', n)
-        buf:set_loaded()
-        input:set_text(unsaved_raw)
+        buf:set_loaded() -- still editing that piece
+        input:set_text(rejected)
         input:jump_home()
-        self.view:refresh()
       else
-        local _, n = buf:replace_content(newtext)
+        local _, n = buf:replace_content(approved)
         self:save(buf)
         self:_move_sel('down', n)
         buf:clear_loaded()
         input:clear()
-        self.view:refresh()
         load_selection()
       end
 
+      self.view:refresh()
       self:update_status()
     end
 
@@ -659,17 +665,27 @@ function EditorController:_normal_mode_keys(k)
         and not Key.alt()
         and Key.is_enter(k) then
       local function add(newtext)
-        if bufv:is_selection_visible() then
-          local sel = buf:get_selection()
-          local _, n = buf:insert_content(newtext, sel)
-          self:save(buf)
-          self.view:refresh()
-          self:_move_sel('down', n)
-          buf:clear_loaded()
-          self:update_status()
-        else
-          bufv:follow_selection()
+        if not bufv:is_selection_visible() then
+          return bufv:follow_selection()
         end
+
+        local approved, rejected = analyze_input(newtext)
+        if not approved then return end
+
+        local sel = buf:get_selection()
+        local _, n = buf:insert_content(approved, sel)
+        self:save(buf)
+        self:_move_sel('down', n)
+        if rejected then
+          buf:set_loaded() -- still editing that piece
+          input:set_text(rejected)
+          input:jump_home()
+        else
+          buf:clear_loaded()
+          -- input not cleared/reset, is it ok?
+        end
+        self.view:refresh()
+        self:update_status()
       end
 
       self:_handle_submit(add)

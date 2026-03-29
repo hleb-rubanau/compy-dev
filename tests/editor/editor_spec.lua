@@ -484,8 +484,8 @@ describe('Editor #editor', function()
         session = EditorSession(controller, press, save, mock)
       end)
 
-      describe("editblocks", function()
-        it('alters normal', function()
+      describe("replacement with", function()
+        it('single normal block', function()
           local f_orig = mock_func_snippet("orig")
           local f_modified = mock_func_snippet("modified")
           local f_untouched = mock_func_snippet("untouched")
@@ -497,11 +497,15 @@ describe('Editor #editor', function()
           session:select_and_open_block(1, f_orig)
           session:submit(f_modified)
 
-          session:select_block(1)
+          assert.is_true(input:is_empty(), "input emptified")
+          assert.same(2, buffer.selection, "selection moved")
+          assert.same({}, buffer:get_selected_text(),
+                      "next empty block is selected")
 
+          session:select_block(1)
           assert.same(string.lines(f_modified),
                       buffer:get_selected_text(),
-                      "selection replaced with mofidied block")
+                      "selection replaced with modified block")
           assert.same(string.lines(src_exp),
                       buffer:get_text_content(),
                       "buffer contains expected altered content")
@@ -509,7 +513,38 @@ describe('Editor #editor', function()
                       "saved content has altered block")
         end)
 
-        it('rejects replacement with oversized', function()
+        it('multiple normal blocks', function()
+          local f_orig = mock_func_snippet("orig")
+          local f1 = mock_func_snippet("f1")
+          local f2 = mock_func_snippet("f2")
+          local new_code = src(f1, f2)
+
+          local input, buffer = session:open(f_orig, 1)
+          session:select_and_open_block(1, f_orig)
+          session:submit(new_code, true)
+
+          assert.is_true(input:is_empty(), "input emptified")
+          assert.same(4, buffer.selection, "selection moved")
+          assert.same({''}, buffer:get_selected_text(),
+                      "next block is selected")
+
+          session:select_block(1)
+          assert.same( string.lines(f1),
+                       buffer:get_selected_text(),
+                       "first block injected first")
+          session:select_block(2)
+          assert.same({''}, buffer:get_selected_text(),
+                      "empty line injected after first")
+          session:select_block(3)
+          assert.same( string.lines(f2),
+                       buffer:get_selected_text(),
+                       "first block injected second")
+          assert.same(src(f1,'',f2,''), savefile(),
+                      "old block replaced in saved content")
+
+        end)
+
+        it('oversized block is rejected', function()
           local f_simple = mock_func_snippet("simple")
           local f_oversized = mock_func_snippet("oversized",17)
           local input, buffer = session:open(f_simple, 1)
@@ -528,7 +563,7 @@ describe('Editor #editor', function()
                       "saved content not changed")
         end)
 
-        it("allows replacement of oversized", function()
+        it("normal block rewrites oversized", function()
           local f_simple = mock_func_snippet("simple")
           local f_oversized = mock_func_snippet("oversized",17)
 
@@ -537,7 +572,7 @@ describe('Editor #editor', function()
           session:submit(f_simple)
 
           assert.same(2, buffer.selection, "selection moved")
-          assert.truthy(input:is_empty(), "input emptified")
+          assert.is_true(input:is_empty(), "input emptified")
           session:select_block(1)
           assert.same(string.lines(f_simple),
                       buffer:get_selected_text(),
@@ -546,7 +581,7 @@ describe('Editor #editor', function()
                       "updated content is saved")
         end)
 
-        it("allows partial refactoring of oversized", function()
+        it("refactored blocks partially applied", function()
           local f_simple = mock_func_snippet("simple")
           local f_over_orig = mock_func_snippet("oversized",20)
           local f_over_new = mock_func_snippet("oversized2",17)
@@ -576,7 +611,7 @@ describe('Editor #editor', function()
         end)
       end)
 
-      describe("add", function()
+      describe("insertion of", function()
         setup(function()
           some_func = mock_func_snippet('some')
           other_func = mock_func_snippet('other')
@@ -596,11 +631,14 @@ describe('Editor #editor', function()
           input, buffer = session:open(existing_src, n_blocks)
         end)
 
-        it("appends normal block", function()
+        it("single normal block", function()
           local new_func = mock_func_snippet("new_func")
-          session:submit(new_func)
+          session:submit(new_func, true)
 
-          assert.is_true(input:is_empty(), "input cleared")
+          -- input preservation looks counter-intuitive
+          assert.is_false(input:is_empty(), "input preserved")
+          assert.same(n_blocks+1, buffer:get_content_length(),
+                      "buffer size increased by 1 block")
           assert.same(n_blocks+1, buffer.selection,
                       "selection moved down by 1")
 
@@ -608,21 +646,23 @@ describe('Editor #editor', function()
           assert.same( string.lines(new_func),
                        buffer:get_selected_text(),
                        "content added as new block")
-          assert.same( existing_src..new_func,
+          assert.same( existing_src..new_func..'\n',
                        savefile(),
                        "saved file contains updates")
         end)
 
-        it("appends multiple normal blocks", function()
+        it("multiple normal blocks", function()
           local f1 = mock_func_snippet("f1")
           local f2 = mock_func_snippet("f2")
           local new_code = src(f1, f2)
-          session:submit(new_code)
+          session:submit(new_code, true)
 
           assert.is_true(input:is_empty(), "input cleared")
+          assert.same(n_blocks+2, buffer:get_content_length(),
+                      "buffer size increased by 2 blocks")
           assert.same(n_blocks+2, buffer.selection,
                       "selection moved down by 2")
-          assert.same( '',
+          assert.same( {},
                        buffer:get_selected_text(),
                        "trailing empty line is selected")
 
@@ -639,9 +679,9 @@ describe('Editor #editor', function()
                        "saved file contains updates")
         end)
 
-        it('rejects oversized blocks', function()
+        it('single oversized block is rejected', function()
           local f_oversized = mock_func_snippet("oversized",20)
-          session:submit(f_oversized)
+          session:submit(f_oversized, true)
 
           assert.is_false(input:is_empty(), "input not cleared")
           assert.same( string.lines(f_oversized),
@@ -656,12 +696,11 @@ describe('Editor #editor', function()
                        "saved file unchanged")
         end)
 
-        it("handles normal+oversized submit", function()
-          pending("TBD")
+        it("normal+oversized mix partially applied", function()
           local f_normal = mock_func_snippet("normal")
           local f_oversized = mock_func_snippet("oversized",20)
           local mixed_content = src(f_normal, f_oversized)
-          session:submit(mixed_content)
+          session:submit(mixed_content, true)
 
           assert.same(n_blocks+1, buffer.selection,
                       "selection moved down by 1")
