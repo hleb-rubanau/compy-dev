@@ -600,7 +600,7 @@ describe('Editor #editor', function()
           local new_func = mock_func_snippet("new_func")
           session:submit(new_func)
 
-          assert.truthy(input:is_empty(), "input is empty")
+          assert.is_true(input:is_empty(), "input cleared")
           assert.same(n_blocks+1, buffer.selection,
                       "selection moved down by 1")
 
@@ -614,13 +614,12 @@ describe('Editor #editor', function()
         end)
 
         it("appends multiple normal blocks", function()
-          pending("regression, to be fixed later")
           local f1 = mock_func_snippet("f1")
           local f2 = mock_func_snippet("f2")
           local new_code = src(f1, f2)
           session:submit(new_code)
 
-          assert.truthy(input:is_empty(), "input is empty")
+          assert.is_true(input:is_empty(), "input cleared")
           assert.same(n_blocks+2, buffer.selection,
                       "selection moved down by 2")
           assert.same( '',
@@ -641,7 +640,6 @@ describe('Editor #editor', function()
         end)
 
         it('rejects oversized blocks', function()
-          pending("TBD")
           local f_oversized = mock_func_snippet("oversized",20)
           session:submit(f_oversized)
 
