@@ -474,10 +474,7 @@ describe('Editor #editor', function()
       setup(function() 
         controller, press = wire(TU.mock_view_cfg())
         save, savefile = TU.get_save_function({})
-        session = EditorSession(controller, 
-                                      press, 
-                                      save, 
-                                      mock)
+        session = EditorSession(controller, press, save, mock)
       end)
 
       it('simple altering', function()
