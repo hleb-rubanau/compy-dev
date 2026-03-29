@@ -497,7 +497,7 @@ describe('Editor #editor', function()
           session:select_and_open_block(1, f_orig)
           session:submit(f_modified)
 
-          assert.is_true(input:is_empty(), "input emptified")
+          assert.is_true(input:is_empty(), "input cleared")
           assert.same(2, buffer.selection, "selection moved")
           assert.same({}, buffer:get_selected_text(),
                       "next empty block is selected")
@@ -523,17 +523,17 @@ describe('Editor #editor', function()
           session:select_and_open_block(1, f_orig)
           session:submit(new_code)
 
-          assert.is_true(input:is_empty(), "input emptified")
+          assert.is_true(input:is_empty(), "input cleared")
           assert.same(4, buffer.selection, "selection moved")
-          assert.same({''}, buffer:get_selected_text(),
-                      "next block is selected")
+          assert.same({}, buffer:get_selected_text(),
+                      "next (empty) block is selected")
 
           session:select_block(1)
           assert.same( string.lines(f1),
                        buffer:get_selected_text(),
                        "first block injected first")
           session:select_block(2)
-          assert.same({''}, buffer:get_selected_text(),
+          assert.same({}, buffer:get_selected_text(),
                       "empty line injected after first")
           session:select_block(3)
           assert.same( string.lines(f2),
@@ -572,7 +572,7 @@ describe('Editor #editor', function()
           session:submit(f_simple)
 
           assert.same(2, buffer.selection, "selection moved")
-          assert.is_true(input:is_empty(), "input emptified")
+          assert.is_true(input:is_empty(), "input cleared")
           session:select_block(1)
           assert.same(string.lines(f_simple),
                       buffer:get_selected_text(),

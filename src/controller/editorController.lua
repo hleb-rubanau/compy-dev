@@ -643,6 +643,7 @@ function EditorController:_normal_mode_keys(k)
       if rejected then
         local _, n = buf:insert_content(approved)
         self:save(buf)
+        self.view:refresh()
         self:_move_sel('down', n)
         buf:set_loaded() -- still editing that piece
         input:set_text(rejected)
@@ -650,13 +651,13 @@ function EditorController:_normal_mode_keys(k)
       else
         local _, n = buf:replace_content(approved)
         self:save(buf)
+        self.view:refresh()
         self:_move_sel('down', n)
         buf:clear_loaded()
         input:clear()
         load_selection()
       end
 
-      self.view:refresh()
       self:update_status()
     end
 
@@ -675,6 +676,7 @@ function EditorController:_normal_mode_keys(k)
         local sel = buf:get_selection()
         local _, n = buf:insert_content(approved, sel)
         self:save(buf)
+        self.view:refresh()
         self:_move_sel('down', n)
         if rejected then
           buf:set_loaded() -- still editing that piece
@@ -684,7 +686,6 @@ function EditorController:_normal_mode_keys(k)
           buf:clear_loaded()
           -- input not cleared/reset, is it ok?
         end
-        self.view:refresh()
         self:update_status()
       end
 
