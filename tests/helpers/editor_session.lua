@@ -12,6 +12,7 @@ EditorSession = class.create(
 )
 
 function EditorSession:open(src, nb)
+  self.save(src)
   self.controller:open("test.lua", src, self.save)
   local input = self.controller.input
   local buffer = self.controller:get_active_buffer()
@@ -41,7 +42,9 @@ function EditorSession:open(src, nb)
   return input, buffer
 end
 
+-- only works reliably if input is not open!
 function EditorSession:select_block(n, target_content)
+
   local s = self.buffer.selection
   local dir = (s > n) and "up" or "down"
   local steps = math.abs(s-n)

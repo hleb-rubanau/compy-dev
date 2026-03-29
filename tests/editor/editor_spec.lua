@@ -472,11 +472,17 @@ describe('Editor #editor', function()
 
       setup(function() 
         controller, press = wire(TU.mock_view_cfg())
+        save = nil
+        savefile = nil
+        session = nil
+      end)
+
+      before_each(function()
         save, savefile = TU.get_save_function({})
         session = EditorSession(controller, press, save, mock)
       end)
 
-      describe("edit", function()
+      describe("editblocks", function()
         it('alters normal', function()
           local f_orig = mock_func_snippet("orig")
           local f_modified = mock_func_snippet("modified")
@@ -502,21 +508,21 @@ describe('Editor #editor', function()
         end)
 
         it('rejects replacement with oversized', function()
-          pending("WIP")
+          --pending("WIP")
           local f_simple = mock_func_snippet("simple")
           local f_oversized = mock_func_snippet("oversized",17)
           local input, buffer = session:open(f_simple, 1)
           session:select_and_open_block(1, f_simple)
           session:submit(f_oversized)
 
-          assert.same(1,buffer.selection, "selection not moved")
+          assert.same(1, buffer.selection, "selection not moved")
           assert.same(string.lines(f_simple),
                       buffer:get_selected_text(),
                       "selection content not changed")
           assert.same(string.lines(f_oversized),
                       input:get_text(),
                       "input content stays altered")
-          assert.same(f_simple..'\n',
+          assert.same(f_simple,
                       savefile(),
                       "saved content not changed")
         end)
