@@ -471,13 +471,15 @@ describe('Editor #editor', function()
       local fmt = string.format
 
       setup(function() 
-        controller, press = wire(TU.mock_view_cfg())
+        controller = nil
+        press = nil
         save = nil
         savefile = nil
         session = nil
       end)
 
       before_each(function()
+        controller, press = wire(TU.mock_view_cfg())
         save, savefile = TU.get_save_function({})
         session = EditorSession(controller, press, save, mock)
       end)
@@ -508,7 +510,6 @@ describe('Editor #editor', function()
         end)
 
         it('rejects replacement with oversized', function()
-          --pending("WIP")
           local f_simple = mock_func_snippet("simple")
           local f_oversized = mock_func_snippet("oversized",17)
           local input, buffer = session:open(f_simple, 1)
