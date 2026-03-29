@@ -463,5 +463,84 @@ describe('Editor #editor', function()
       modified[#modified + 1] = ''
       assert.same(string.unlines(modified), after)
     end)
+
+    it('edits block', function()
+      require("tests.helpers.codesnippets")
+      require("tests.helpers.editor_session")
+      local src = snippets_to_code
+      local fmt = string.format
+
+      local f_orig = mock_func_snippet("orig")
+      local f_modified = mock_func_snippet("modified")
+      local f_untouched = mock_func_snippet("untouched")
+
+      local f_orig_lines = string.lines(f_orig)
+      local f_mod_lines = string.lines(f_modified)
+
+      local src_orig = src(f_orig, '', f_untouched)
+      local src_exp = src(f_modified, '', f_untouched, '')
+
+      local controller, press = wire(TU.mock_view_cfg())
+      local save, savefile = TU.get_save_function({})
+      local session = EditorSession(controller, 
+                                    press, 
+                                    save, 
+                                    mock)
+
+      local input, buffer = session:open(src_orig, 3)
+      
+      assert.same(4, buffer:get_content_length(),
+                 "size of buffer = #blocks plus 1(extra empty)")
+
+      function select_block(n)
+        local s = buffer.selection
+        local dir = (s > n) and "up" or "down"
+        local step = (s > n) and -1 or 1
+
+        for i = s, n, step do
+          mock.keystroke(dir, press)
+        end
+        assert.same(n, buffer.selection,
+                    fmt("selection moved to block #%s",n))
+      end
+
+      function select_and_open_block(n)
+        select_block(n)
+        mock.keystroke('escape', press)
+        assert.same(n, buffer.loaded,
+                    fmt("loaded block #%s",n))
+      end
+
+      --mock.keystroke('up', press)
+      --mock.keystroke('up', press)
+      --mock.keystroke('up', press)
+      --assert.same(1, buffer.selection,
+      --            "selection moved to first block")
+      select_and_open_block(1)
+      assert.same(f_orig_lines,
+                  buffer:get_selected_text(),
+                  "selected block is one under test")
+
+      assert.same(f_orig_lines, input:get_text(),
+                  "loaded block is one under test")
+
+      input:set_text(f_mod_lines)
+      assert.same(f_mod_lines, input:get_text(),
+                  "input modified as expected")
+
+      mock.keystroke('return', press)
+      select_block(1)
+      assert.same(f_mod_lines,
+                  buffer:get_selected_text(),
+                  "selection replaced with mofidied block")
+      assert.same(string.lines(src_exp),
+                  buffer:get_text_content(),
+                  "buffer contains expected altered content")
+
+      local after = savefile()
+      assert.same(src_exp, after,
+                 "saved file contains expected altered content")
+    end)
+
   end)
 end)
