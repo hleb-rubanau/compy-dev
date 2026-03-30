@@ -670,7 +670,10 @@ function EditorController:_normal_mode_keys(k)
           return bufv:follow_selection()
         end
 
-        local approved, rejected = analyze_input(newtext)
+        local approved, rejected = newtext, false
+        if is_lua then
+          approved, rejected = analyze_input(newtext)
+        end
         if not approved then return end
 
         local sel = buf:get_selection()

@@ -468,6 +468,8 @@ function BufferModel:insert_content(t, lbn)
       end
     end)()
 
+    local oldlen = self:get_content_length()
+
     for i = #chunks, 1, -1 do
       local c = chunks[i]
       local nr = c.pos:translate(cs - 1)
@@ -485,7 +487,10 @@ function BufferModel:insert_content(t, lbn)
     end
 
     self:_text_change(true)
-    return true, n
+    -- rechunk in #text_change may erase some new empty blocks
+    -- so factual n of blocks added should be recalculted
+    local newlen = self:get_content_length()
+    return true, (newlen - oldlen)
   else
     local ti = num
     for i = #t, 1, -1 do

@@ -538,7 +538,7 @@ describe('Editor #editor', function()
           session:select_block(3)
           assert.same( string.lines(f2),
                        buffer:get_selected_text(),
-                       "first block injected second")
+                       "second block injected second")
           assert.same(src(f1,'',f2,''), savefile(),
                       "old block replaced in saved content")
 
@@ -615,14 +615,16 @@ describe('Editor #editor', function()
         setup(function()
           some_func = mock_func_snippet('some')
           other_func = mock_func_snippet('other')
-          existing_src = src(some_func,
-                             '',
-                             '--some comment',
-                             '',
-                             other_func,
-                             ''
-                             )
-          n_blocks = 6
+          base_blocks = {
+            some_func,
+            '',
+            '--some comment',
+            '',
+            other_func,
+            ''
+          }
+          existing_src = src(unpack(base_blocks))
+          n_blocks = #base_blocks
           input = nil
           buffer = nil
         end)
@@ -635,8 +637,8 @@ describe('Editor #editor', function()
           local new_func = mock_func_snippet("new_func")
           session:submit(new_func, true)
 
-          -- input preservation looks counter-intuitive
-          assert.is_false(input:is_empty(), "input preserved")
+          assert.is_false(input:is_empty(),
+                          "input not cleared (is it desired?)")
           assert.same(n_blocks+1, buffer:get_content_length(),
                       "buffer size increased by 1 block")
           assert.same(n_blocks+1, buffer.selection,
@@ -657,11 +659,12 @@ describe('Editor #editor', function()
           local new_code = src(f1, f2)
           session:submit(new_code, true)
 
-          assert.is_true(input:is_empty(), "input cleared")
-          assert.same(n_blocks+2, buffer:get_content_length(),
-                      "buffer size increased by 2 blocks")
-          assert.same(n_blocks+2, buffer.selection,
-                      "selection moved down by 2")
+          assert.is_false(input:is_empty(),
+                        "input not cleared (is it desired?)")
+          assert.same(n_blocks+3, buffer:get_content_length(),
+                      "buffer size increased by 3 blocks")
+          assert.same(n_blocks+3, buffer.selection,
+                      "selection moved down by 3")
           assert.same( {},
                        buffer:get_selected_text(),
                        "trailing empty line is selected")
@@ -669,12 +672,15 @@ describe('Editor #editor', function()
           session:select_block(n_blocks)
           assert.same( string.lines(f1),
                        buffer:get_selected_text(),
-                       "first block injected before empty line")
+                       "first block injected first")
           session:select_block(n_blocks+1)
+          assert.same({}, buffer:get_selected_text(),
+                      "empty line injected after first")
+          session:select_block(n_blocks+2)
           assert.same( string.lines(f2),
                        buffer:get_selected_text(),
-                       "second block injected after first")
-          assert.same( src(existing_src..f1..f2,''),
+                       "second block injected second")
+          assert.same( src(existing_src..f1,'',f2,''),
                        savefile(),
                        "saved file contains updates")
         end)
@@ -698,29 +704,69 @@ describe('Editor #editor', function()
 
         it("normal+oversized mix partially applied", function()
           local f_normal = mock_func_snippet("normal")
+          local f1 = mock_func_snippet("f1")
+          local f2 = mock_func_snippet("f2")
           local f_oversized = mock_func_snippet("oversized",20)
-          local mixed_content = src(f_normal, f_oversized)
+
+          local good = { f_normal, f1, f2 }
+          local bad =  { f_oversized }
+          local mix = table.flatten({good, bad})
+          local mixed_content = src(unpack(mix))
+          -- mixed content has interleaving spaces
+          local exp_injection = { f_normal, '', f1, '', f2, '' }
+
+          local old_sel = buffer.selection
+          local old_len = buffer:get_content_length()
+          local old_selected_block = buffer:get_selected_text()
+
           session:submit(mixed_content, true)
 
-          assert.same(n_blocks+1, buffer.selection,
-                      "selection moved down by 1")
-          assert.same(n_blocks+1, buffer:get_content_length(),
-                      "buffer length inreased by 1")
+          local new_sel = buffer.selection
+          local new_len = buffer:get_content_length()
 
-          session:select_block(n_blocks)
-
-          assert.same(string.lines(f_normal),
-                      buffer:get_selected_text(),
-                      "normal block is injected")
-
+          local exp_blockshift = #exp_injection
+          if base_blocks[#base_blocks]=='' then
+            if exp_injection[#exp_injection]=='' then
+              -- injection at empty: two empty lines collapse
+              exp_blockshift = exp_blockshift - 1
+            end
+          end
           assert.is_false(input:is_empty(), "input not cleared")
           assert.same(string.lines(f_oversized),
                       input:get_text(),
                       "oversized block kept in input")
 
-          assert.same( src(existing_src..f_normal,''),
+          local hint = string.format("(%s)", exp_blockshift)
+          local shiftmsg = "# of good blocks + separators"..hint
+          assert.same(old_len + exp_blockshift, new_len,
+                      "buffer length increased by "..shiftmsg)
+          assert.same(old_sel + exp_blockshift, new_sel,
+                      "selection moved down by "..shiftmsg)
+
+          local injection_start = old_sel
+          for i, g in ipairs(good) do
+            local blockshift = 2*(i-1) -- blocks + empties
+            local exp_loc = injection_start + blockshift
+            session:select_block(exp_loc)
+            local hint = fmt("(#%s at %s)", i, exp_loc)
+            assert.same(string.lines(good[i]),
+                        buffer:get_selected_text(),
+                        "normal block is injected "..hint)
+          end
+
+          session:select_block(new_sel)
+          assert.same(old_selected_block,
+                      buffer:get_selected_text(),
+                      "original block is shifted down")
+
+          -- strictly speaking, code injects before sel
+          -- but here selection point is trailing empty line,
+          -- and it collapses with last empty line of injected
+          local exp_new_src = src(unpack(exp_injection))
+          local exp_full_src = existing_src..exp_new_src
+          assert.same( exp_full_src,
                        savefile(),
-                       "saved file updated with normal block")
+                       "saved file updated with normal blocks")
         end)
       end)
 
