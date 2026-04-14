@@ -42,7 +42,8 @@ function EditorSession:open(src, nb)
   return input, buffer
 end
 
--- only works reliably if input is not open!
+-- this helper only works reliably in block-level navigation mode!
+-- (when editor input buffer is not yet activated with <ESC>)
 function EditorSession:select_block(n, target_content)
 
   local s = self.buffer.selection

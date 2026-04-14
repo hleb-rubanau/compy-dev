@@ -488,7 +488,7 @@ function BufferModel:insert_content(t, lbn)
 
     self:_text_change(true)
     -- rechunk in #text_change may erase some new empty blocks
-    -- so factual n of blocks added should be recalculted
+    -- so factual n of blocks added should be recalculated
     local newlen = self:get_content_length()
     return true, (newlen - oldlen)
   else
