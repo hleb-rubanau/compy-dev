@@ -470,13 +470,7 @@ describe('Editor #editor', function()
       local src = snippets_to_code
       local fmt = string.format
 
-      setup(function() 
-        controller = nil
-        press = nil
-        save = nil
-        savefile = nil
-        session = nil
-      end)
+      local controller, press, save, savefile, session
 
       before_each(function()
         controller, press = wire(TU.mock_view_cfg())
