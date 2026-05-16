@@ -189,8 +189,8 @@ function UserInputView:render_input(input, status, time)
             color = Color[ci] or colors.fg
           end
         end
-        if perr and ln > el or
-            (ln == el and (c > ec or ec == 1)) then
+        if el and ln > el or
+            (ln == el and (ec and c > ec or ec == 1)) then
           color = cf_colors.input.error
         end
         local selected = (function()
