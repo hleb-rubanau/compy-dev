@@ -631,8 +631,7 @@ describe('Editor #editor', function()
           local new_func = mock_func_snippet("new_func")
           session:submit(new_func, true)
 
-          assert.is_false(input:is_empty(),
-                          "input not cleared (is it desired?)")
+          assert.is_true(input:is_empty(), "input cleared")
           assert.same(n_blocks+1, buffer:get_content_length(),
                       "buffer size increased by 1 block")
           assert.same(n_blocks+1, buffer.selection,
@@ -653,8 +652,7 @@ describe('Editor #editor', function()
           local new_code = src(f1, f2)
           session:submit(new_code, true)
 
-          assert.is_false(input:is_empty(),
-                        "input not cleared (is it desired?)")
+          assert.is_true(input:is_empty(), "input cleared")
           assert.same(n_blocks+3, buffer:get_content_length(),
                       "buffer size increased by 3 blocks")
           assert.same(n_blocks+3, buffer.selection,

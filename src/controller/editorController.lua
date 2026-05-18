@@ -698,7 +698,7 @@ function EditorController:_normal_mode_keys(k)
           input:jump_home()
         else
           buf:clear_loaded()
-          -- input not cleared/reset, is it ok?
+          input:clear()
         end
         self:update_status()
       end
