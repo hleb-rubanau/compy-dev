@@ -121,7 +121,7 @@ function BufferView:get_state()
 end
 
 --- @return integer
-function BufferView:get_size()
+function BufferView:get_max_size()
   return self.LINES
 end
 

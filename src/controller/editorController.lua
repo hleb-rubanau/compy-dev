@@ -602,7 +602,7 @@ function EditorController:_normal_mode_keys(k)
   local function submit()
     local bufv = self.view:get_current_buffer()
     local is_lua = bufv.content_type == 'lua'
-    local size_limit = bufv:get_size()
+    local size_limit = bufv:get_max_size()
     local is_oversized_chunk = function(v)
       return (v and v.pos and v.pos:len() > size_limit)
     end
