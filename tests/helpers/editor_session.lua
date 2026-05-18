@@ -48,8 +48,10 @@ function EditorSession:open(src, nb)
   return input, buffer
 end
 
--- this helper only works reliably in block-level navigation mode!
--- (when editor input buffer is not yet activated with <ESC>)
+-- this helper is a bit of a dirty hack
+-- so it only works reliably in block-level navigation mode!
+-- (when editor multiline input buffer is not yet activated with <ESC>)
+-- see also: https://github.com/compy-toys/compy/issues/117 (p.2)
 function EditorSession:select_block(n, target_content)
   local s = self.buffer.selection
   local dir = (s > n) and "up" or "down"
