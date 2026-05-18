@@ -463,5 +463,44 @@ describe('Editor #editor', function()
       modified[#modified + 1] = ''
       assert.same(string.unlines(modified), after)
     end)
+
+    describe('known bugs', function()
+      --- @param src string
+      --- @param block_n integer
+      --- @return function press
+      --- @return UserInputController input
+      --- @return fun(): string savefile
+      local function open_block_for_edit(src, block_n)
+        local controller, press = wire(TU.mock_view_cfg())
+        local save, savefile = TU.get_save_function({})
+        controller:open('test.lua', src, save)
+        local buffer = controller:get_active_buffer()
+        local input = controller.input
+        local s = buffer.selection
+        local dir = (s > block_n) and 'up' or 'down'
+        for _ = 1, math.abs(s - block_n) do
+          mock.keystroke(dir, press)
+        end
+        assert.same(block_n, buffer.selection)
+        mock.keystroke('escape', press)
+        assert.same(block_n, buffer.loaded)
+        return press, input, savefile
+      end
+
+      -- bug: https://github.com/compy-toys/compy/issues/114
+      it('emptyline+comment before block', function()
+        local orig = 'print("hello_world")'
+        local comment = '-- comment'
+        local press, input, saved = open_block_for_edit(orig, 1)
+        local edited = '\n' .. comment .. '\n' .. orig
+        input:set_text(string.lines(edited))
+        mock.keystroke('return', press)
+
+        local expected = { comment, orig, '' }
+        assert.same(string.unlines(expected), saved(),
+          "only comment then block, no comment duplication")
+      end)
+
+    end)
   end)
 end)
