@@ -2,7 +2,22 @@ local class = require("util.class")
 local assert = require("luassert")
 local fmt = string.format
 
+--- Drives the editor in tests via mocked keystrokes
+--- (block navigation mode).
+
+--- @class EditorSession
+--- @field controller EditorController
+--- @field press fun(...: any)
+--- @field save fun(src: string)
+--- @field mock table
+--- @field input UserInputController?
+--- @field buffer BufferModel?
+
 EditorSession = class.create(
+  --- @param controller EditorController
+  --- @param press fun(...: any)
+  --- @param save fun(src: string)
+  --- @param mock table
   function(controller, press, save, mock)
     return {
       controller = controller,
@@ -13,6 +28,10 @@ EditorSession = class.create(
   end
 )
 
+--- @param src string
+--- @param nb integer?
+--- @return UserInputController
+--- @return BufferModel
 function EditorSession:open(src, nb)
   self.save(src)
   self.controller:open("test.lua", src, self.save)
@@ -48,10 +67,13 @@ function EditorSession:open(src, nb)
   return input, buffer
 end
 
+-- moves selection to block number `n`
 -- this helper is a bit of a dirty hack
 -- so it only works reliably in block-level navigation mode!
 -- (when editor multiline input buffer is not yet activated with <ESC>)
 -- see also: https://github.com/compy-toys/compy/issues/117 (p.2)
+--- @param n integer
+--- @param target_content string?
 function EditorSession:select_block(n, target_content)
   local s = self.buffer.selection
   local dir = (s > n) and "up" or "down"
@@ -79,6 +101,8 @@ function EditorSession:select_block(n, target_content)
   end
 end
 
+--- @param n integer
+--- @param target_content string?
 function EditorSession:select_and_open_block(n, target_content)
   self:select_block(n, target_content)
   self.mock.keystroke("escape", self.press)
@@ -94,12 +118,15 @@ function EditorSession:select_and_open_block(n, target_content)
   end
 end
 
+--- @param newtext string
 function EditorSession:alter_input(newtext)
   local newlines = string.lines(newtext)
   self.input:set_text(newlines)
   assert.same(newlines, self.input:get_text(), "input altered")
 end
 
+--- @param newtext string
+--- @param ctrl boolean?
 function EditorSession:submit(newtext, ctrl)
   self:alter_input(newtext)
   local keycode = ctrl and "C-return" or "return"

@@ -18,6 +18,7 @@ function Empty:is_empty()
   return true
 end
 
+--- @return string[]
 function Empty:to_lines()
   return { }
 end
@@ -50,6 +51,7 @@ function Chunk.new(lines, pos)
   return self
 end
 
+--- @return Dequeue<string>
 function Chunk:to_lines()
   return self.lines
 end

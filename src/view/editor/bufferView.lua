@@ -213,6 +213,7 @@ function BufferView:scroll_to_line(ln)
   self:scroll_to(off)
 end
 
+--- @param tolerate_oversize boolean?
 --- @return boolean
 --- @return VerticalDir?
 --- @return number? diff

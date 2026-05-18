@@ -603,15 +603,24 @@ function EditorController:_normal_mode_keys(k)
     local bufv = self.view:get_current_buffer()
     local is_lua = bufv.content_type == 'lua'
     local size_limit = bufv:get_max_size()
+    --- @param v Block
+    --- @return boolean
     local is_oversized_chunk = function(v)
       return (v and v.pos and v.pos:len() > size_limit)
     end
+    --- @param chunks Block[]
+    --- @return integer?
     local first_oversized_chunk = function(chunks)
       if is_lua then
         return table.find_by(chunks, is_oversized_chunk)
       end
     end
+    --- @param x Block
+    --- @return Dequeue<string>|string[]
     local to_lines = function(x) return x:to_lines() end
+    --- @param newtext Block[]
+    --- @return Block[]|false
+    --- @return boolean|string[]?
     local analyze_input = function(newtext)
       local oversized = first_oversized_chunk(newtext)
       if not oversized then
@@ -627,6 +636,7 @@ function EditorController:_normal_mode_keys(k)
       return approved, rejected_raw
     end
 
+    --- @param newtext Block[]
     local function replace(newtext)
       if not bufv:is_selection_visible(true) then
         return bufv:follow_selection()
@@ -665,6 +675,7 @@ function EditorController:_normal_mode_keys(k)
         and not Key.shift()
         and not Key.alt()
         and Key.is_enter(k) then
+      --- @param newtext Block[]
       local function add(newtext)
         if not bufv:is_selection_visible() then
           return bufv:follow_selection()

@@ -1,3 +1,6 @@
+--- @param name string
+--- @param num_lines integer? defaults to 3; must be at least 3
+--- @return string
 function mock_func_snippet(name, num_lines)
   num_lines = num_lines or 3
   assert(num_lines >= 3, "minimum number of lines is 3")
@@ -20,6 +23,10 @@ function mock_func_snippet(name, num_lines)
   return string.unlines(lines)
 end
 
+--- @param ... string
+--- @return string
+--- @return { pos: integer, len: integer, start: integer,
+---   ["end"]: integer }[]
 function snippets_to_code(...)
   local snippets = { ... }
   local metadata = {}
