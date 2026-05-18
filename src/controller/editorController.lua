@@ -615,25 +615,23 @@ function EditorController:_normal_mode_keys(k)
         return table.find_by(chunks, is_oversized_chunk)
       end
     end
-    --- @param x Block
-    --- @return Dequeue<string>|string[]
-    local to_lines = function(x) return x:to_lines() end
+    --- @param chunks Block[]
+    --- @param idx integer
+    local reject_oversized = function(chunks, idx)
+      local block = chunks[idx]
+      if not block or not block.pos then return end
+      input.model:move_cursor(block.pos.start, 1)
+      input:update_view()
+    end
     --- @param newtext Block[]
     --- @return Block[]|false
-    --- @return boolean|string[]?
+    --- @return integer? first oversized chunk index
     local analyze_input = function(newtext)
       local oversized = first_oversized_chunk(newtext)
       if not oversized then
-        return newtext, false
+        return newtext
       end
-      if oversized == 1 then
-        return false
-      end
-      local approved = table.slice(newtext, 1, oversized-1)
-      local rejected = table.slice(newtext, oversized)
-      local rejected_lines = table.map(rejected, to_lines)
-      local rejected_raw = table.flatten(rejected_lines)
-      return approved, rejected_raw
+      return false, oversized
     end
 
     --- @param newtext Block[]
@@ -648,25 +646,22 @@ function EditorController:_normal_mode_keys(k)
         return
       end
 
-      local approved, rejected = analyze_input(newtext)
-      if not approved then return end
-      if rejected then
-        local _, n = buf:insert_content(approved)
-        self:save(buf)
-        self.view:refresh()
-        self:_move_sel('down', n)
-        buf:set_loaded() -- still editing that piece
-        input:set_text(rejected)
-        input:jump_home()
-      else
-        local _, n = buf:replace_content(approved)
-        self:save(buf)
-        self.view:refresh()
-        self:_move_sel('down', n)
-        buf:clear_loaded()
-        input:clear()
-        load_selection()
+      local approved, oversized = analyze_input(newtext)
+      if not approved then
+        if oversized then
+          reject_oversized(newtext, oversized)
+        end
+        return
       end
+
+      local _, n = buf:replace_content(approved)
+      self:save(buf)
+      self.view:refresh()
+      self:_move_sel('down', n)
+      buf:clear_loaded()
+      input:clear()
+
+      load_selection()
 
       self:update_status()
     end
@@ -681,25 +676,22 @@ function EditorController:_normal_mode_keys(k)
           return bufv:follow_selection()
         end
 
-        local approved, rejected = newtext, false
-        if is_lua then
-          approved, rejected = analyze_input(newtext)
+        local approved, oversized = analyze_input(newtext)
+        if not approved then
+          if oversized then
+            reject_oversized(newtext, oversized)
+          end
+          return
         end
-        if not approved then return end
 
         local sel = buf:get_selection()
         local _, n = buf:insert_content(approved, sel)
         self:save(buf)
         self.view:refresh()
         self:_move_sel('down', n)
-        if rejected then
-          buf:set_loaded() -- still editing that piece
-          input:set_text(rejected)
-          input:jump_home()
-        else
-          buf:clear_loaded()
-          input:clear()
-        end
+        buf:clear_loaded()
+        input:clear()
+
         self:update_status()
       end
 

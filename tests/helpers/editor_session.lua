@@ -132,3 +132,24 @@ function EditorSession:submit(newtext, ctrl)
   local keycode = ctrl and "C-return" or "return"
   self.mock.keystroke(keycode, self.press)
 end
+
+--- @param snippet string
+--- @return integer
+function EditorSession:input_line_of(snippet)
+  local first = string.lines(snippet)[1]
+  for i, line in ipairs(self.input:get_text()) do
+    if line == first then return i end
+  end
+  error("snippet first line not found in input")
+end
+
+--- @param line integer
+--- @param col integer?
+function EditorSession:assert_cursor_at(line, col)
+  col = col or 1
+  local cl, cc = self.input:get_cursor_pos()
+  assert.same(line, cl, "cursor line")
+  assert.same(col, cc, "cursor column")
+  local vr = self.input.model.visible:get_range()
+  assert.is_true(vr:inc(line), "cursor line visible in input")
+end

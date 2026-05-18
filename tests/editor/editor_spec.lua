@@ -494,7 +494,7 @@ describe('Editor #editor', function()
           assert.is_true(input:is_empty(), "input cleared")
           assert.same(2, buffer.selection, "selection moved")
           assert.same({}, buffer:get_selected_text(),
-                      "next empty block is selected")
+                      "next (empty) block is selected")
 
           session:select_block(1)
           assert.same(string.lines(f_modified),
@@ -555,6 +555,7 @@ describe('Editor #editor', function()
           assert.same(f_simple,
                       savefile(),
                       "saved content not changed")
+          session:assert_cursor_at(session:input_line_of(f_oversized))
         end)
 
         it("normal block rewrites oversized", function()
@@ -575,7 +576,7 @@ describe('Editor #editor', function()
                       "updated content is saved")
         end)
 
-        it("refactored blocks partially applied", function()
+        it("refactored blocks with oversized tail rejected", function()
           local f_simple = mock_func_snippet("simple")
           local f_over_orig = mock_func_snippet("oversized",20)
           local f_over_new = mock_func_snippet("oversized2",17)
@@ -585,23 +586,18 @@ describe('Editor #editor', function()
           session:select_and_open_block(1, f_over_orig)
           session:submit(code_refactored)
 
-          assert.same(3, buffer.selection,
-                       "selected block moved down")
+          assert.same(1, buffer.selection,
+                       "selection not moved")
           assert.same( string.lines(f_over_orig),
                        buffer:get_selected_text(),
                        "selection text stays untouched" )
-          assert.same( string.lines(f_over_new),
+          assert.same( string.lines(code_refactored),
                        input:get_text(),
-                       "input contains non-refactored part")
-          session:select_block(1)
-          assert.same( string.lines(f_simple),
-                       buffer:get_selected_text(),
-                       "refactored block is injected before")
-          local resulting_src = src(f_simple, "", f_over_orig)
-          assert.same( string.unlines(resulting_src).."\n",
-                       savefile(),
-                       "saved file is a mix of new and old code")
-
+                       "input keeps full submission")
+          assert.same(f_over_orig,
+                      savefile(),
+                      "saved content not changed")
+          session:assert_cursor_at(session:input_line_of(f_over_new))
         end)
       end)
 
@@ -692,9 +688,10 @@ describe('Editor #editor', function()
           assert.same( existing_src,
                        savefile(),
                        "saved file unchanged")
+          session:assert_cursor_at(session:input_line_of(f_oversized))
         end)
 
-        it("normal+oversized mix partially applied", function()
+        it("normal+oversized mix rejected", function()
           local f_normal = mock_func_snippet("normal")
           local f1 = mock_func_snippet("f1")
           local f2 = mock_func_snippet("f2")
@@ -704,8 +701,6 @@ describe('Editor #editor', function()
           local bad =  { f_oversized }
           local mix = table.flatten({good, bad})
           local mixed_content = src(unpack(mix))
-          -- mixed content has interleaving spaces
-          local exp_injection = { f_normal, '', f1, '', f2, '' }
 
           local old_sel = buffer.selection
           local old_len = buffer:get_content_length()
@@ -713,52 +708,20 @@ describe('Editor #editor', function()
 
           session:submit(mixed_content, true)
 
-          local new_sel = buffer.selection
-          local new_len = buffer:get_content_length()
-
-          local exp_blockshift = #exp_injection
-          if base_blocks[#base_blocks]=='' then
-            if exp_injection[#exp_injection]=='' then
-              -- injection at empty: two empty lines collapse
-              exp_blockshift = exp_blockshift - 1
-            end
-          end
-          assert.is_false(input:is_empty(), "input not cleared")
-          assert.same(string.lines(f_oversized),
-                      input:get_text(),
-                      "oversized block kept in input")
-
-          local hint = string.format("(%s)", exp_blockshift)
-          local shiftmsg = "# of good blocks + separators"..hint
-          assert.same(old_len + exp_blockshift, new_len,
-                      "buffer length increased by "..shiftmsg)
-          assert.same(old_sel + exp_blockshift, new_sel,
-                      "selection moved down by "..shiftmsg)
-
-          local injection_start = old_sel
-          for i, g in ipairs(good) do
-            local blockshift = 2*(i-1) -- blocks + empties
-            local exp_loc = injection_start + blockshift
-            session:select_block(exp_loc)
-            local hint = fmt("(#%s at %s)", i, exp_loc)
-            assert.same(string.lines(good[i]),
-                        buffer:get_selected_text(),
-                        "normal block is injected "..hint)
-          end
-
-          session:select_block(new_sel)
+          assert.same(old_len, buffer:get_content_length(),
+                      "buffer length unchanged")
+          assert.same(old_sel, buffer.selection,
+                      "selection not moved")
           assert.same(old_selected_block,
                       buffer:get_selected_text(),
-                      "original block is shifted down")
-
-          -- strictly speaking, code injects before sel
-          -- but here selection point is trailing empty line,
-          -- and it collapses with last empty line of injected
-          local exp_new_src = src(unpack(exp_injection))
-          local exp_full_src = existing_src..exp_new_src
-          assert.same( exp_full_src,
-                       savefile(),
-                       "saved file updated with normal blocks")
+                      "original block unchanged")
+          assert.same(string.lines(mixed_content),
+                      input:get_text(),
+                      "input keeps full submission")
+          assert.same(existing_src,
+                      savefile(),
+                      "saved file unchanged")
+          session:assert_cursor_at(session:input_line_of(f_oversized))
         end)
       end)
 
