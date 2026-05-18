@@ -18,6 +18,10 @@ function Empty:is_empty()
   return true
 end
 
+function Empty:to_lines()
+  return { }
+end
+
 function Empty:__tostring()
   return string.format('L%d: <empty>', self.pos.start)
 end
@@ -44,6 +48,10 @@ function Chunk.new(lines, pos)
   }, Chunk)
 
   return self
+end
+
+function Chunk:to_lines()
+  return self.lines
 end
 
 function Chunk:is_empty()

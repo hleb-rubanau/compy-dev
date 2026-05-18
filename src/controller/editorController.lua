@@ -611,7 +611,7 @@ function EditorController:_normal_mode_keys(k)
         return table.find_by(chunks, is_oversized_chunk)
       end
     end
-    local to_lines = function(x) return x.lines end
+    local to_lines = function(x) return x:to_lines() end
     local analyze_input = function(newtext)
       local oversized = first_oversized_chunk(newtext)
       if not oversized then
