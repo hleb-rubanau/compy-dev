@@ -344,10 +344,10 @@ function EditorController:_handle_submit(go)
         local newlines_injection_needed = (#chunks > 1)
         if #chunks < #raw_chunks then
           local rc = raw_chunks
-          if rc[1].tag == 'empty' then
+          if rc[1]:is_empty() then
             table.insert(chunks, 1, Empty(0))
           end
-          if rc[#rc].tag == 'empty' then
+          if rc[#rc]:is_empty() then
             local li = chunks[#chunks].pos.fin
             table.insert(chunks, Empty(li + 1))
           end
@@ -355,8 +355,8 @@ function EditorController:_handle_submit(go)
         if newlines_injection_needed then
           for i = #chunks, 2, -1 do
             local ch=chunks
-            local this_nonempty = ch[i].tag ~= 'empty'
-            local prev_nonempty = ch[i-1].tag ~= 'empty'
+            local this_nonempty = not(ch[i]:is_empty())
+            local prev_nonempty = not(ch[i-1]:is_empty())
             if this_nonempty and prev_nonempty then
               local prev_pos = ch[i-1].pos.fin
               table.insert(ch, i, Empty(prev_pos+1))
