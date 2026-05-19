@@ -311,11 +311,13 @@ return function(lib)
       local wrap = w
       local ret = Dequeue.typed('block')
       local ok, r = parse(text)
+
       local has_lines = false
       if ok then
         local idx = 1  -- block number
         local last = 0 -- last line number
         local comment_ids = {}
+        local comment_lines = {}
         --- Create chunk from comment text and pos
         --- @param ctext str
         --- @param c Comment
@@ -326,6 +328,7 @@ return function(lib)
             idx)
           comment_ids[c.idf] = true
           comment_ids[c.idl] = true
+          comment_lines[c.first.l] = true
         end
         --- @param comments Comment[]
         --- @param pos CommentPos
@@ -334,7 +337,8 @@ return function(lib)
             -- Log.warn('c', c.position)
             -- Log.warn(Debug.terse_t(c, nil, nil, true))
             if c.position == pos
-                and not (comment_ids[c.idl] or comment_ids[c.idf])
+                and not (comment_ids[c.idl] or comment_ids[c.idf]
+                    or comment_lines[c.first.l])
             then
               local cfl, cll = c.first.l, c.last.l
               -- account for empty lines
@@ -343,6 +347,7 @@ return function(lib)
                 idx = idx + 1
                 comment_ids[c.idf] = true
                 comment_ids[c.idl] = true
+                comment_lines[cfl] = true
               end
               if cfl == cll then
                 local ctext = '--' .. c.text
@@ -409,7 +414,7 @@ return function(lib)
           get_comments(comments, 'last')
         end
 
-        if single or not has_lines then
+        if not has_lines then
           --- @diagnostic disable-next-line: param-type-mismatch
           local single_comment = ast_extract_comments(r, {}, wrap)
           get_comments(single_comment, 'first')

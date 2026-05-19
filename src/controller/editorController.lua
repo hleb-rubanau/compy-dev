@@ -344,7 +344,14 @@ function EditorController:_handle_submit(go)
         if #chunks < #raw_chunks then
           local rc = raw_chunks
           if rc[1].tag == 'empty' then
-            table.insert(chunks, 1, Empty(0))
+            --- Leading empty in raw may be editor padding before the
+            --- first real block; do not restore it when pprint already
+            --- starts with content.
+            local has_leading_content = chunks[1]
+                and chunks[1].tag ~= 'empty'
+            if not has_leading_content then
+              table.insert(chunks, 1, Empty(rc[1].pos.start))
+            end
           end
           if rc[#rc].tag == 'empty' then
             local li = chunks[#chunks].pos.fin

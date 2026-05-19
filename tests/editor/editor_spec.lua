@@ -464,7 +464,7 @@ describe('Editor #editor', function()
       assert.same(string.unlines(modified), after)
     end)
 
-    describe('known bugs', function()
+    describe('known bugs #regressions', function()
       --- @param src string
       --- @param block_n integer
       --- @return function press
@@ -487,7 +487,7 @@ describe('Editor #editor', function()
         return press, input, savefile
       end
 
-      -- bug: https://github.com/compy-toys/compy/issues/114
+      -- fixed: https://github.com/compy-toys/compy/issues/114
       it('emptyline+comment before block', function()
         local orig = 'print("hello_world")'
         local comment = '-- comment'
