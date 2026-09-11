@@ -33,7 +33,18 @@ function CanvasModel.new(cfg)
   end
   local canvas = gfx.newCanvas(w, h)
   local custom_height = cfg.view.fh * cfg.view.lh
-  local term = Terminal(w, h, cfg.view.font,
+  -- The terminal spans only the visible console region: the full
+  -- view height minus the statusline and input line. Sizing it to
+  -- the full height gives it rows that render under the input line,
+  -- where a final un-terminated output line lands off-screen and is
+  -- only revealed once a newline scrolls the buffer up (#149). The
+  -- drawing canvas above keeps the full size, so canvas programs are
+  -- unaffected.
+  local term_h = h
+  if not cfg.view.sizedebug then
+    term_h = ViewUtils.get_drawable_height(cfg.view)
+  end
+  local term = Terminal(w, term_h, cfg.view.font,
     nil, custom_height)
 
   local color = cfg.view.colors.terminal
