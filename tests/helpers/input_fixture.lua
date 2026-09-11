@@ -57,6 +57,10 @@ local function mock_runtime()
     },
     paths      = { project_path = '/tmp' },
     filesystem = { getInfo = function() end },
+    -- The console prepares serial support at build time and asks
+    -- love.system.getOS() to pick a backend; the mock love has no
+    -- `system`, so stub it (a desktop OS -> the null backend).
+    system     = { getOS = function() return 'Linux' end },
   })
 end
 
