@@ -304,6 +304,22 @@ local function terminal_draw(terminal)
     end
 end
 
+-- Drop bytes that are not valid UTF-8. The terminal renders
+-- UTF-8 only, and utf8.codes raises on a malformed sequence, so
+-- an undefended write of a stray byte (e.g. from a serial board)
+-- takes the whole output down. Defend here, at the one sink all
+-- writes pass through, dropping what is not text -- the same
+-- policy model/serial/echo.lua already applies to its own path.
+local function utf8_clean(s)
+    local out = s
+    local ok, bad = utf8.len(out)
+    while not ok do
+        out = out:sub(1, bad - 1) .. out:sub(bad + 1)
+        ok, bad = utf8.len(out)
+    end
+    return out
+end
+
 local function terminal_print(terminal, x, y, ...)
     local res_string = nil
 
@@ -316,7 +332,7 @@ local function terminal_print(terminal, x, y, ...)
         res_string = string.format(...)
     end
 
-    for i, p in utf8.codes(res_string) do
+    for i, p in utf8.codes(utf8_clean(res_string)) do
         table.insert(terminal.stdin, utf8.char(p))
     end
 end
