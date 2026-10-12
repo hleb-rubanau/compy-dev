@@ -130,13 +130,10 @@ describe('editor key contract #input', function()
     -- D-EDITOR-KEYS statement 6. Both leave the editor
     -- through ConsoleController:finish_edit, which stores
     -- the clipboard and drops the buffers with no acceptance
-    -- step, so an open changed block is lost silently. The
-    -- guard exists one level down — the rework's discard
-    -- confirmation — and is unreachable from here because it
-    -- is a method on EditorController while both exits sit
-    -- above the editor. This branch did not create these
-    -- exits — only moved the layer they sit at, which is why
-    -- they are in our contract at all.
+    -- step, so an open changed block is lost silently. This
+    -- branch did not create these exits — only moved the
+    -- layer they sit at, which is why they are in our
+    -- contract at all.
     local left, ran, orig_finish, orig_run
 
     before_each(function()

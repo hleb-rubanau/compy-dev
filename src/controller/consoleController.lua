@@ -156,10 +156,7 @@ end
 --- return.
 ---
 --- Single invocation point by construction, so a second stop
---- path cannot grow its own arrangement. It is also where
---- forced restore of global device state belongs once that is
---- built (doc/development/technical_debt/input.md, "A project
---- that raises leaves global device state dirty").
+--- path cannot grow its own arrangement.
 ---
 --- Uninstalling AFTER the call, never before, is what makes a
 --- parting reinstallation from inside the hook unreachable.
@@ -416,7 +413,7 @@ function ConsoleController:run_project(name)
       else
         if not self.main_ctrl.user_is_blocking() then
           -- The route is NOT released here: a non-blocking run
-          -- reaching 'project_open' keeps every channel until
+          -- reaching the idle state keeps every channel until
           -- the project actually stops, every channel sharing
           -- one lifetime (doc/development/decisions/input.md,
           -- D-ROUTE-LIFETIME).

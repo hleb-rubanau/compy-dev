@@ -1180,12 +1180,9 @@ describe('input surface: inbound events — dispatch #input',
     -- environment does not get one: the console's own
     -- `compy.input` resolved the same widget a running project
     -- holds, so a command typed at the prompt could
-    -- reconfigure it, and the release removes the member
-    -- (doc/development/internals/console.md, "Three
-    -- Environments"). The
-    -- refusal to assign stays in both namespaces, so a
-    -- console-side write fails loudly rather than creating a
-    -- fake surface that dispatches to nobody.
+    -- reconfigure it. The refusal to assign stays in both
+    -- namespaces, so a console-side write fails loudly rather
+    -- than creating a fake surface that dispatches to nobody.
     it('the console environment has no input surface',
       function()
         local compy = F.cc:get_console_env().compy

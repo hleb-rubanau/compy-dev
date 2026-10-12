@@ -45,8 +45,9 @@ describe('input surface: inbound events — route lifetime' ..
 
     describe('connection at the running boundary', function()
       -- The route is held by an OPEN project, not only by a
-      -- running one: a non-blocking run reaching 'project_open'
-      -- keeps every channel until the project actually stops.
+      -- running one: a non-blocking run reaching the idle
+      -- state keeps every channel until the project actually
+      -- stops.
       -- It is what lets one release path serve every channel.
       -- Ctrl+Esc is the documented way back to the console.
       -- The hook consumes, so the console assertion witnesses
