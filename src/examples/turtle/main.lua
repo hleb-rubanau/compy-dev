@@ -76,8 +76,8 @@ arm_echo_guard()
 -- One widget per command: it stays shown after submit by
 -- default, so this project asks for the other behaviour once,
 -- before its first show (doc/input_api.md, "Asking one
--- question"). It is a mode rather than a one-off — every submit
--- hides the widget until something passes
+-- question"). It is a mode rather than a one-off — every
+-- submit hides the widget until something passes
 -- `hide_on_submit = false`, which is exactly what turtle wants
 -- and why it is configured once rather than re-armed per show.
 -- The widget is shown empty next time because the project
@@ -93,13 +93,12 @@ compy.input.callbacks.after_submit = arm_echo_guard
 -- love.keyreleased: this project shows the widget, so a handler
 -- picked up from love.* would consume the channel above it
 -- (doc/input_api.md, "How events reach your project") and the
--- widget would never see a key. Turtle used to demonstrate the
--- legacy path for its own sake; the widget is the reason it
--- stopped.
+-- widget would never see a key.
 compy.input.hooks.keyreleased = function(key)
-  -- Open only when it is closed, and consume `i` only then: the hook
-  -- runs BEFORE the widget, so without the guard every `i` typed into
-  -- the widget would re-trigger show (which warns and no-ops).
+  -- Open only when it is closed, and consume `i` only
+  -- then: the hook runs BEFORE the widget, so without the
+  -- guard every `i` typed into the widget would re-trigger
+  -- show (which warns and no-ops).
   if key == "i" and not compy.input.is_shown() then
     compy.input.show{
       prompt = "TURTLE",

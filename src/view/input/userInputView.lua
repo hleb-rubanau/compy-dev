@@ -289,13 +289,12 @@ function UserInputView:render(input, status, time)
 end
 
 --- Draw the pre-rendered canvas to screen
--- doc/development/internals/user_input.md, "Submit and cancel —
--- widget-owned callback sequences": oneshot is gone; the
--- published input widget instance is the one view that skips
--- this continuous per-frame update_view(). The boot-provisioned
--- input widget owns its rendering updates; other controllers
--- update before drawing. See the identity-redraw debt entry for
--- the migration constraint.
+-- doc/development/internals/user_input.md, "Submit and cancel
+-- — widget-owned callback sequences": the published input
+-- widget instance is the one view that skips this continuous
+-- per-frame update_view() — it owns its own rendering
+-- updates, while other controllers update before drawing. See
+-- the identity-redraw debt entry for the migration constraint.
 function UserInputView:draw()
   if self.controller ~= love.state.user_input_controller then
     self.controller:update_view()

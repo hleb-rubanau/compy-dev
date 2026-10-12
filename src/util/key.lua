@@ -76,9 +76,9 @@ end
 
 --- A combo names modifiers plus exactly ONE trigger
 --- (doc/development/decisions/input.md, D-COMBO-SHAPE). Refused
---- at registration rather than silently canonicalised, because
---- the canonical form used to keep the LAST trigger and drop
---- the rest: 'ctrl+a+b' became 'ctrl+b', and 'a+b+*' became a
+--- at registration rather than silently canonicalised:
+--- canonicalising would keep the LAST trigger and drop the
+--- rest — 'ctrl+a+b' would become 'ctrl+b', and 'a+b+*' a
 --- bare '*' — the widest binding there is, from a string
 --- written to mean the narrowest.
 ---
@@ -127,8 +127,9 @@ end
 
 --- Is any of the named keys held? The project-facing way to ask
 --- the keyboard about a key `Key` has no accessor for — a key
---- that is not a modifier — so project code has one surface for
---- held state instead of reaching for love.keyboard beside it.
+--- that is not a modifier — so project code has one
+--- surface for held state instead of reaching for
+--- love.keyboard beside it.
 --- Multi-argument is OR, exactly like the device call it wraps.
 --- Named `any_pressed` because of that OR: a future richer
 --- predicate over a whole chord is a different question and

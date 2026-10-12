@@ -42,13 +42,10 @@ local user_pointer
 
 -- One lifetime, several names for subsets of it. Every channel
 -- installs the same way, runs the same chain, and is released
--- at the same moment: the project's stop. The split that
--- existed here (keyboard released at running->project_open,
--- pointer exempted so pen-and-paper projects survived it) came
--- with this feature and is gone: at the PR base nothing was
--- released before suspend or stop. The subsets below name what
--- a group CARRIES, never how it is routed: keyboard/text events
--- have a combo trigger and therefore a shortcuts tier.
+-- at the same moment: the project's stop. The subsets below
+-- name what a group CARRIES, never how it is routed:
+-- keyboard/text events have a combo trigger and therefore a
+-- shortcuts tier.
 local _keyboard = {
   'keypressed',
   'keyreleased',
@@ -126,13 +123,9 @@ end
 -- The arguments are CLOSED OVER, not passed through xpcall.
 -- `xpcall(f, h, ...)` forwarding arguments to `f` is a
 -- LuaJIT/5.2 extension; PUC Lua 5.1 takes exactly two and
--- drops the rest, calling every handler with nil for all of
--- its parameters. This form asks nothing of the runtime, so
--- there is no platform branch to get wrong — the previous one
--- keyed off `_G.web` (the Web build, which is PUC 5.1) and so
--- missed `busted` running on PUC 5.1, where it cost 107 red
--- cases (`doc/development/technical_debt/input.md`, RETIRED,
--- "`wrap` guards the `xpcall` arity hazard on the platform").
+-- drops the rest, calling every handler with nil. Closing
+-- over asks nothing of the runtime, so there is no platform
+-- branch to get wrong.
 --
 -- `select('#')`, not `#args`: an explicit nil argument is an
 -- argument, and the two disagree about that.
@@ -180,9 +173,6 @@ end
 --- project that never overrode an event seeds `hooks[event]`
 --- with the framework's own default, which would then run as
 --- if it were the project's.
----
---- Early return rather than an `if` around the body: an `if`
---- would nest what follows a level deeper.
 --- @param userlove table
 --- @param key string
 --- @return function? handler
@@ -194,8 +184,9 @@ end
 
 --- The project's own keyboard/text handlers, for seeding as
 --- hooks[event] (doc/development/decisions/input.md,
---- D-HOOKS-SEEDED) — raw, so a seeded hook is an ordinary chain
---- participant: it consumes on truthy and falls through on
+--- D-HOOKS-SEEDED) — raw, so a seeded hook is an ordinary
+--- chain participant: it consumes on truthy and falls
+--- through on
 --- falsey exactly like one the project assigned itself.
 --- @param userlove table
 --- @param CC ConsoleController
@@ -235,19 +226,18 @@ end
 --- delegation (never route owners themselves).
 --- @param userlove table
 --- @param CC ConsoleController
--- `userlove`: the project's sandboxed `love` table. `occupy`:
--- take over the keyboard/text handlers for the project route's
--- run (doc/development/decisions/input.md D-ROUTE-LIFETIME uses
--- this verb). Giving the project route its own connect path —
--- not a generic route swap — is deliberate: the three routes
--- are not yet fully symmetric (the editor is still reached via
--- the console fork), so PIC is wired explicitly here. See
--- doc/development/decisions/input.md #1 "route-centric routing"
--- + #11 "route connects only while running". It installs even
--- with no project handlers: the walk decides, per event, and an
--- unconsumed one falls back to the console unless the project
--- owns the screen (fall_through, above). (`userlove` rename:
--- technical_debt.)
+-- `occupy`: take over the keyboard/text handlers for the
+-- project route's run (doc/development/decisions/input.md
+-- D-ROUTE-LIFETIME uses this verb). Giving the project route
+-- its own connect path — not a generic route swap — is
+-- deliberate: the three routes are not yet fully symmetric (the
+-- editor is still reached via the console fork), so PIC is
+-- wired explicitly here. See doc/development/decisions/input.md
+-- #1 "route-centric routing" + #11 "route connects only while
+-- running". It installs even with no project handlers: the walk
+-- decides, per event, and an unconsumed one falls back to the
+-- console unless the project owns the screen (fall_through,
+-- above).
 local function occupy_input(userlove, CC)
   local pic = Controller.project_input
   local compy = CC:get_project_env().compy
@@ -395,8 +385,8 @@ end
 --- clears the project's shortcuts and hooks. The callbacks
 --- table lives on the widget, which the stop destroys outright,
 --- so there is nothing to clear there. Reaches through the
---- frozen container's sub-tables — the container itself refuses
---- direct writes (D-FROZEN-SHELL).
+--- frozen container's sub-tables — the container itself
+--- refuses direct writes (D-FROZEN-SHELL).
 --- @param CC ConsoleController
 local function reset_compy_input(CC)
   local input = CC:get_project_env().compy.input
@@ -490,10 +480,6 @@ local FPSC_CYCLE = {
 --- @field user_is_blocking function
 -- Every console channel except keypressed forwards its
 -- arguments to the console controller and does nothing else.
--- Nine copies of the same three lines were nine chances for
--- one to drift, and
--- their per-event @param blocks documented LÖVE's signatures
--- rather than anything this code decides.
 --- @param event string
 --- @return function
 local function console_channel(event)
@@ -777,8 +763,9 @@ Controller = {
   --- reinstall keypressed plus _keyboard_rest and leave the
   --- seven pointer channels bound to the dispatcher it had
   --- just deactivated. Reachable through a successful run
-  --- followed by a failed one — the failing run alone occupies
-  --- nothing, since set_user_handlers is on run_user_code's ok
+  --- followed by a failed one — the failing run alone
+  --- occupies nothing, since set_user_handlers is on
+  --- run_user_code's ok
   --- branch (doc/development/internals/user_input.md,
   --- "Dispatch chain").
   --- @param CC ConsoleController
@@ -858,8 +845,9 @@ Controller = {
 
     -- Reservations below run unconditionally in dev mode; in
     -- playback (cfg.mode == 'play') only restart/profile stay
-    -- live (doc/development/decisions/input.md, D-ROUTE-OWNS) —
-    -- each project/console-management one checks it and no-ops.
+    -- live (doc/development/decisions/input.md,
+    -- D-ROUTE-OWNS) — each project/console-management one
+    -- checks it and no-ops.
     local function reserved_quickswitch()
       if playback then return end
       local st = love.state.app_state
@@ -1034,13 +1022,10 @@ Controller = {
       end
     end
 
-    -- Wheel had no entry of compy's own until 2026-08-03. It
-    -- still reached a project, but by accident: this function
-    -- writes INTO love.handlers rather than replacing it, so
-    -- LÖVE's stock wheelmoved survived and called
-    -- love.wheelmoved. Declaring it makes the gateway
-    -- self-contained instead of depending on that, and puts
-    -- wheel on the same footing as every other pointer channel.
+    -- Wheel gets an explicit gateway entry like every other
+    -- pointer channel. This function writes INTO love.handlers
+    -- rather than replacing it, so without one LÖVE's stock
+    -- wheelmoved would survive and be relied on by accident.
     --- @param x number
     --- @param y number
     handlers.wheelmoved = function(x, y)
@@ -1108,8 +1093,9 @@ Controller = {
   end,
 
   --- A non-blocking project is still "live" while it has an
-  --- active input widget or a pointer/click handler — it keeps
-  --- the project route and Ctrl+Esc returns to the console.
+  --- active input widget or a pointer/click handler — it
+  --- keeps the project route and Ctrl+Esc returns to the
+  --- console.
   user_is_interactive = function()
     return (love.state.user_input ~= nil) or user_pointer
   end,

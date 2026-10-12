@@ -538,7 +538,8 @@ function UserInputModel:highlight()
     -- hl stays indexable even with no highlighter (parser but
     -- no colouring): the view indexes highlight.hl
     -- unconditionally.
-    self._memo.highlight = { hl = hl or {}, parse_err = parse_err }
+    self._memo.highlight = { hl = hl or {},
+      parse_err = parse_err }
   else
     if ev.highlighter then
       -- same invariant as the parser branch above: a
@@ -563,13 +564,6 @@ end
 ----------------
 
 --- @return boolean
--- doc/development/internals/user_input.md, "Submit and cancel —
--- widget-owned callback sequences": oneshot is gone, so nothing
--- distinguishes a single-use solicitation from any other
--- model anymore. Only the (never-history-reading) project
--- widget set oneshot=true, so suppression here was already
--- inert; the flag's other job (submit-closing) is what
--- moved into the new submit chain (userInputController.lua).
 function UserInputModel:keep_history()
   return true
 end

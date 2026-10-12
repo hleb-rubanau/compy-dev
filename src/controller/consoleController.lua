@@ -147,23 +147,19 @@ end
 --- The framework's own teardown, and the ONLY place a project's
 --- `compy.before_exit` is ever invoked.
 ---
---- Stopping is the framework's business, not the project's.
---- A hook at all is a convenience — somewhere to save a score
---- or stop a timer — so it is called here, directly, inside a
---- pcall, and never through the dispatch chain. That is the
---- point of the indirection rather than a call at the stop
---- site: a chain consumer signals by returning truthy, and no
---- later edit should be able to give a project's teardown hook
---- that meaning by accident. Nothing reads what it returns, and
---- there is no return value here for a caller to read either.
+--- Stopping is the framework's business, not the project's. The
+--- hook is a convenience (save a score, stop a timer), so it
+--- is called directly here inside a pcall, never through the
+--- dispatch chain: a chain consumer signals by returning
+--- truthy, and no later edit should be able to give a project's
+--- teardown hook that meaning by accident. Nothing reads its
+--- return.
 ---
 --- Single invocation point by construction, so a second stop
 --- path cannot grow its own arrangement. It is also where
 --- forced restore of global device state belongs once that is
---- built: the framework has teardown of its own to do, and
---- this is the seam for it. See
---- doc/development/technical_debt/input.md, "A project that
---- raises leaves global device state dirty".
+--- built (doc/development/technical_debt/input.md, "A project
+--- that raises leaves global device state dirty").
 ---
 --- Uninstalling AFTER the call, never before, is what makes a
 --- parting reinstallation from inside the hook unreachable.
@@ -186,7 +182,8 @@ end
 --- to fall with the handle, or the next project's show() is
 --- refused as a repeat (doc/development/decisions/input.md,
 --- D-WIDGET-AT-BOOT). `hide()` fires no cancel flow
---- (D-EDIT-LIFECYCLE) — teardown is not a user-facing dismiss.
+--- (D-EDIT-LIFECYCLE) — teardown is not a user-facing
+--- dismiss.
 local function hide_input_widget()
   local widget = love.state.user_input_controller
   if widget then return widget:hide() end
@@ -355,14 +352,6 @@ function ConsoleController:loadfile(name)
   return chunk
 end
 
--- (wrap_handler and get_compy_handler removed together: both
--- existed for compy.singleclick / compy.doubleclick, which are
--- now ordinary events reached through the dispatch chain. The
--- one surviving way to run project code — canvas bound, errors
--- routed, return propagated — is `guarded` in controller.lua,
--- applied where a route is entered. wrap_handler differed from
--- it only by discarding the return, which nothing needed.)
-
 --- @param name string?
 function ConsoleController:run_project(name)
   if love.state.app_state == 'inspect' or
@@ -426,16 +415,11 @@ function ConsoleController:run_project(name)
         print('Error: ', run_err)
       else
         if not self.main_ctrl.user_is_blocking() then
-          -- The route is NOT released here. A non-blocking run
+          -- The route is NOT released here: a non-blocking run
           -- reaching 'project_open' keeps every channel until
-          -- the project actually stops. That is the pre-feature
-          -- lifecycle: at the PR base nothing was released
-          -- before suspend or stop, and the keyboard-only
-          -- release this feature added was what forced pointer
-          -- to be exempted from it. With every channel on one
-          -- route there is nothing left to exempt.
-          -- (doc/development/decisions/input.md,
-          -- D-ROUTE-LIFETIME.)
+          -- the project actually stops, every channel sharing
+          -- one lifetime (doc/development/decisions/input.md,
+          -- D-ROUTE-LIFETIME).
           -- Serial is the exception: the program is idle, not
           -- stopped, so its handlers stay, but it is no longer
           -- the one speaking and the console listens again.
@@ -519,12 +503,10 @@ local get_compy_terminal = function(terminal)
   }
 end
 
--- Builds the `compy.input` sub-namespace — the input
--- solicitation surface, complementary to compy.terminal
--- (above): compy.terminal is the always-present console OUTPUT
--- grid the project writes to; compy.input is the transient
--- input widget the project shows to ask the user for text and
--- get a value back. The two "cursor" notions differ:
+-- Builds the `compy.input` sub-namespace: the transient input
+-- widget a project shows to ask the user for text and get a
+-- value back (compy.terminal above is the always-present
+-- output grid). The two "cursor" notions differ:
 -- terminal.gotoxy moves the console grid cursor,
 -- input.get_cursor/set_cursor address the caret WITHIN the
 -- input widget. By architectural contract these wrappers are
@@ -532,16 +514,14 @@ end
 -- UserInputController (love.state.user_input_controller);
 -- projects never touch the controller directly. Namespace +
 -- lifecycle docs: doc/development/internals/user_input.md.
--- compy.input's write boundary
--- (doc/development/decisions/input.md, D-FROZEN-SHELL): the
--- container and the IDENTITY of its three sub-tables (shortcuts
--- / hooks / callbacks) are frozen — a project cannot replace
--- them (compy.input.shortcuts = {} raises). Every LEAF inside
--- is freely writable: shortcuts[event][combo] = fn (through the
--- combo table's own normalising __newindex, D-COMBO-TABLES),
--- hooks[event] = fn, callbacks[name] = fn. One structural rule
--- replaces the old enumerated 11-name allowlist — nothing to
--- keep in sync with the API surface.
+-- Write boundary (doc/development/decisions/input.md,
+-- D-FROZEN-SHELL): the container and the IDENTITY of its three
+-- sub-tables (shortcuts / hooks / callbacks) are frozen — a
+-- project cannot replace them (compy.input.shortcuts = {}
+-- raises), but every LEAF inside is freely writable
+-- (shortcuts[event][combo] = fn through the combo table's
+-- normalising __newindex, D-COMBO-TABLES; hooks[event] = fn;
+-- callbacks[name] = fn).
 --- @param k any
 local function unassignable_error(k)
   error("compy.input: '" .. tostring(k)
@@ -581,7 +561,8 @@ end
 --- D-STOP-AND-SIDE), reached as compy.input.fn.*. Stateless and
 --- orthogonal:
 --- `ignore_repeat` decides whether the handler RUNS,
---- `stop_here`/`side_run` decide whether the event PROPAGATES —
+--- `stop_here`/`side_run` decide whether the event
+--- PROPAGATES —
 --- each returns a fixed truthy/falsy in place of whatever the
 --- handler returned — and neither knows about the other. The
 --- combination most bindings want is
@@ -606,8 +587,8 @@ local INPUT_FN = {
     end
   end,
   --- Run `fn` if given, and let the event carry on regardless
-  --- of what it returned — the binding is a side effect, not a
-  --- claim on the key.
+  --- of what it returned — the binding is a side effect,
+  --- not a claim on the key.
   side_run = function(fn)
     return function(...)
       if fn then fn(...) end
@@ -623,8 +604,8 @@ local input_fn_surface = build_frozen_view(
 --- Assemble the compy.input surface: reads resolve the three
 --- frozen sub-tables (shortcuts / hooks / callbacks), the
 --- wrapper table, or a callable method; every write to the
---- container itself is refused loudly (D-FROZEN-SHELL — frozen
---- container, writable leaves).
+--- container itself is refused loudly (D-FROZEN-SHELL —
+--- frozen container, writable leaves).
 --- @param state table
 --- @param methods table
 --- @return table
@@ -737,23 +718,21 @@ local function bad_key_message(fname, key)
 end
 
 --- Strict contract enforcement
---- (doc/development/decisions/input.md, D-UNKNOWN-RAISES):
---- the config table is CLOSED, so a key
---- outside it can only be an authoring error — raise, and let
---- the project stop at the typo instead of running on in a
---- shape nobody asked for. Level 3 puts the trace on the
---- project's own show()/configure() line.
---- Runtime STATE no-ops (the widget already active, or
---- hidden) are NOT this: they keep warning, per
---- D-WIDGET-AT-BOOT.
+--- (doc/development/decisions/input.md, D-UNKNOWN-RAISES): the
+--- config table is CLOSED, so a key outside it can only be an
+--- authoring error — raise, and let the project stop at the
+--- typo instead of running on in a shape nobody asked for.
+--- Runtime STATE no-ops (the widget already active, or hidden)
+--- are NOT this: they keep warning, per D-WIDGET-AT-BOOT.
 ---
---- Level 4 puts the trace on the project's own line, and holds
---- only while every caller sits at the same depth: project →
---- the api table's one-line closure → api_show/api_configure →
---- here. That is why `configure` is lifted out into
---- `api_configure` rather than doing the work inline — inline
---- it was one frame shallower, and the same constant pointed
---- `show`'s raise at this file instead of at the project.
+--- Error level 4 puts the trace on the project's own line, and
+--- holds only while every caller sits at the same depth:
+--- project → the api table's one-line closure →
+--- api_show/api_configure → here. That is why `configure` is
+--- lifted out into `api_configure` rather than done inline —
+--- inline it was one frame shallower, and the shared constant
+--- pointed `show`'s raise at this file instead of at the
+--- project.
 --- @param cfg table
 --- @param fname string
 --- @param allowed table
@@ -766,11 +745,11 @@ local function check_keys(cfg, fname, allowed)
 end
 
 --- A cursor is a {line, col} pair of numbers. A malformed one
---- is an authoring error and is refused the way a bad KEY is —
---- with a framework message naming the shape, rather than the
+--- is an authoring error and is refused the way a bad
+--- KEY is — with a framework message naming the shape,
+--- rather than the
 --- raw "bad argument to 'min'" that used to come back out of
---- the clamp (doc/development/technical_debt/input.md,
---- "T-CURSOR-SHAPE"). An out-of-RANGE number is a different
+--- the clamp. An out-of-RANGE number is a different
 --- thing: it is well-formed and still clamps, which is what
 --- doc/input_api.md promises.
 ---
@@ -811,8 +790,9 @@ end
 
 --- Sibling of checked_cursor, same level-4 depth rule. Content
 --- is normalised, never validated, once it is inside the model
---- (doc/development/decisions/input.md, D-CONTENT-NORM) — what
---- cannot be normalised is refused here: a value that is not
+--- (doc/development/decisions/input.md, D-CONTENT-NORM) —
+--- what cannot be normalised is refused here: a value that
+--- is not
 --- text, or a table that is not a list of lines, is a structure
 --- error rather than a spelling of the shape, and repairing it
 --- would turn a caller's mistake into content nobody wrote.
@@ -944,19 +924,20 @@ end
 -- widget (resolved from love.state, never held by the project).
 -- The widget-method surface a project drives (show/hide/
 -- configure/set_text/get_text/set_cursor/get_cursor/clear),
--- parameterized by instance: any adopter — not only the project
--- widget — gets the same ergonomics over ITS OWN widget by
+-- parameterized by instance: any adopter — not only the
+-- project widget — gets the same ergonomics over ITS OWN
+-- widget by
 -- supplying its own resolvers. `get_widget` resolves the
 -- UserInputController; `get_active_flag` reports shown-ness
 -- (truthy = shown); `state` is the sticky output-callback store
 -- show()/configure() read. The project widget closes the two
--- resolvers over the love.state globals — behaviour-identical
--- to the pre-factory inline shape.
+-- resolvers over the love.state globals.
 --- @param get_widget fun(): UserInputController?
 --- @param get_active_flag fun(): table?
 --- @param state table
 --- @return table
-local function build_widget_api(get_widget, get_active_flag, state)
+local function build_widget_api(get_widget,
+  get_active_flag, state)
   return {
     show = function(cfg) api_show(get_widget, state, cfg) end,
     hide = function() api_hide(get_widget) end,
@@ -1010,15 +991,17 @@ local function build_widget_api(get_widget, get_active_flag, state)
     -- Hidden is not a refusal and does not warn. text/cursor
     -- never arrive: check_keys refuses them above
     -- (doc/development/decisions/input.md, D-CFG-BOUNDARY).
-    -- Between runs there is no widget, so this is inert rather
-    -- than a raise — the rule the rest of this surface follows.
+    -- Between runs there is no widget, so this is inert
+    -- rather than a raise — the rule the rest of this
+    -- surface follows.
     configure = function(cfg)
       api_configure(get_widget, state, cfg)
     end,
     -- doc/development/internals/user_input.md, "clear()": empty
     -- content + cursor to start, no callback; no-op + warn
-    -- while hidden. Refreshes the view directly (no re-show) —
-    -- reuses the controller's existing clear() (content + error
+    -- while hidden. Refreshes the view directly (no
+    -- re-show) — reuses the controller's existing clear()
+    -- (content + error
     -- state).
     clear = function()
       if not get_active_flag() then
@@ -1034,14 +1017,13 @@ end
 
 local get_compy_input = function()
   -- This closure runs ONCE for the application, so it reads no
-  -- widget: callbacks is RESOLVED per access
-  -- through the state metatable below (owner ruling 2026-07-20,
-  -- re-made 2026-08-27: compy.input.callbacks resolves to the
-  -- current widget's table). NEVER reassign a resolved
-  -- table — only mutate it.
+  -- widget: callbacks is RESOLVED per access through the state
+  -- metatable below (compy.input.callbacks resolves to the
+  -- current widget's table). NEVER reassign a resolved table:
+  -- only mutate it.
   -- One combo table per channel, from the list the route
-  -- dispatches on — not a copy of it, so a channel cannot exist
-  -- for dispatch and be missing here.
+  -- dispatches on — not a copy of it, so a channel cannot
+  -- exist for dispatch and be missing here.
   local shortcut_tables = { }
   for _, ev in ipairs(ProjectInputController.EVENTS) do
     shortcut_tables[ev] = Key.new_handler_table()
@@ -1080,26 +1062,26 @@ end
 -- than an oversight: the input surface resolves whichever
 -- widget is current, so a console-side copy reaches a running
 -- project's widget and reconfigures it, while its own hooks
--- are dispatched by nobody (technical_debt/input.md,
--- T-CONSOLE-SURFACE-INTERFERES; internals/console.md, "The
--- console environment"). Refusing the KEY in both namespaces
+-- are dispatched by nobody
+-- (doc/development/internals/console.md, "Three
+-- Environments"). Refusing the KEY in both namespaces
 -- is deliberate too — without it, a console-side
 -- `compy.input = {}` would succeed and hand the caller a
 -- plain table it believes is the API.
 --- @param terminal table
 --- @param with_input boolean?
 -----------------------------
---- the simple surface ------
+--- the basic surface -------
 -----------------------------
 
 -- doc/development/decisions/input.md, D-SIMPLE-SURFACE: ask /
--- on_answer / on_key / unask, over the SAME widget the precise
--- API drives — no second widget, no second state, no second
--- event path. The stubs below READ the namespace slots when
--- they fire rather than capturing them (statement 4), which is
--- also what keeps them correct across env clones: table.clone
--- copies fields and shares the metatable, so a captured table
--- would be the pre-clone one.
+-- on_answer / on_key / unask, over the SAME widget the
+-- advanced API drives — no second widget, no second state,
+-- no second event path. The stubs below READ the namespace
+-- slots when they fire rather than capturing them (statement
+-- 4), which is also what keeps them correct across env clones:
+-- table.clone copies fields and shares the metatable, so a
+-- captured table would be the pre-clone one.
 
 --- The one-shot disposal a question seats: it disposes of
 --- itself however it ends (statement 6).
@@ -1123,7 +1105,7 @@ end
 --- Save what `ask` is about to overwrite, so answering can put
 --- it back. Content and prompt are NOT saved: they are the
 --- user's, and restoring them would be show() undoing itself.
---- @param input table  the precise surface
+--- @param input table  the advanced surface
 --- @return table
 local function save_config(input)
   local w = love.state.user_input_controller or { }
@@ -1151,11 +1133,11 @@ local function restore_config(input, saved)
   input.hooks.keypressed = saved.keypressed
 end
 
---- The simple surface's names. `get_env` resolves the LIVE
+--- The basic surface's names. `get_env` resolves the LIVE
 --- project environment: a project writes on_answer/on_key on
 --- its own env clone, and the stubs must read that clone
 --- rather than the table this closure was built with.
---- @param input table             the precise surface
+--- @param input table             the advanced surface
 --- @param get_env fun(): table?
 --- @return table
 local function build_simple_surface(input, get_env)
@@ -1207,8 +1189,8 @@ local function build_simple_surface(input, get_env)
   end
 
   --- The collision the owner ruled a RAISE rather than a
-  --- chain (2026-09-09): a project owns its keypressed hook,
-  --- and nothing is blocked by refusing — the precise API
+  --- chain: a project owns its keypressed hook,
+  --- and nothing is blocked by refusing — the advanced API
   --- builds whatever the project wants.
   local function check_hook_free()
     local hk = input.hooks.keypressed
@@ -1221,7 +1203,8 @@ local function build_simple_surface(input, get_env)
     local env = get_env()
     local lv = env and rawget(env, 'love')
     if lv and lv.keypressed then
-      error('compy.ask: this project defines love.keypressed —'
+      error('compy.ask: this project defines'
+        .. ' love.keypressed —'
         .. ' a question installs its own key handler; use the'
         .. ' advanced API (compy.input.show) instead', 3)
     end
@@ -1290,10 +1273,10 @@ local get_compy_namespace = function(terminal, with_input,
     graphics = compy_graphics,
     fonts = CompyFonts(),
   }
-  -- D-SIMPLE-SURFACE statement 2: the simple names are PLAIN
+  -- D-SIMPLE-SURFACE statement 2: the basic names are PLAIN
   -- FIELDS, so each env clone owns its own on_answer/on_key
   -- slot rather than sharing one the way before_exit does.
-  -- Only where the precise surface exists: the two are one API
+  -- Only where the advanced surface exists: the two are one API
   -- and the wrapper has nothing to wrap without it.
   if input_surface then
     local simple = build_simple_surface(input_surface,

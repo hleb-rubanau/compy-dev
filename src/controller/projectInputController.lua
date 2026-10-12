@@ -2,8 +2,9 @@ local class = require('util.class')
 require("util.key")
 
 -- The project route: owner of the input handlers while a
--- project run owns the screen — a sibling to ConsoleController
--- / EditorController. The route is DUMB: it navigates every
+-- project run owns the screen — a sibling to
+-- ConsoleController / EditorController. The route is DUMB:
+-- it navigates every
 -- event, keyboard and pointer alike, through THREE consumers in
 -- order, stopping at the first that returns truthy
 -- (doc/development/decisions/input.md, D-CHAIN-OF-3):  1.
@@ -26,8 +27,9 @@ require("util.key")
 -- contract: doc/development/internals/user_input.md
 
 -- Every channel the chain dispatches on, in ONE list. The
--- derived clicks belong in it: where an event comes from (LÖVE,
--- or the framework's click timer) is not how a project binds
+-- derived clicks belong in it: where an event comes from
+-- (LÖVE, or the framework's click timer) is not how a
+-- project binds
 -- it, and the seeder has to see the same channels the
 -- dispatcher installs.
 local EVENTS = {
@@ -136,11 +138,13 @@ local function find_shortcut(tbl, trigger)
 end
 
 --- The three-consumer walk: shortcuts[event][combo] →
---- hooks[event] → widget, stopping at the first that consumes.
+--- hooks[event] → widget, stopping at the first that
+--- consumes.
 --- A shortcut or hook consumes by returning truthy; the widget
 --- consumes whenever it is shown (its own internal flag), and
---- is skipped when hidden — so the walk reports consumed iff a
---- consumer fired or the widget was shown. A free function over
+--- is skipped when hidden — so the walk reports consumed
+--- iff a consumer fired or the widget was shown. A free
+--- function over
 --- plain tables + a widget reference, so any adopter (not only
 --- the project widget) can reuse it over its own instance. The
 --- nil guards are deliberate (D-NO-LOG-NOISE): whether a hook
@@ -155,7 +159,8 @@ end
 --- @param event string
 --- @param trigger string
 --- @return boolean consumed
-local function dispatch(shortcuts, hooks, widget, event, trigger, ...)
+local function dispatch(shortcuts, hooks, widget, event,
+  trigger, ...)
   local sc = find_shortcut(shortcuts[event], trigger)
   if sc and sc(...) then return true end
   local hk = hooks[event]

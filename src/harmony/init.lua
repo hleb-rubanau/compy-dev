@@ -171,13 +171,12 @@ local function utils()
     Hyper = 'lgui',
     H     = 'lgui',
   }
-  -- Scripted modifiers live here and are answered by the
-  -- patched isDown; they never enter the event stream. That is
-  -- sufficient while modifier state is read from the device
-  -- (doc/development/decisions/input.md, "D-ASK-THE-DEVICE —
-  -- modifier state is read from the device"). A consumer that
-  -- instead counts key events to mirror what is held would see
-  -- no modifier here, and would misjudge silently.
+  -- Scripted modifiers live here, answered by the patched
+  -- isDown; they never enter the event stream — sufficient
+  -- while modifier state is read from the device
+  -- (doc/development/decisions/input.md, D-ASK-THE-DEVICE). A
+  -- consumer counting key events instead, to mirror what is
+  -- held, would see no modifier here and misjudge silently.
   local held = {
     lctrl  = false,
     rctrl  = false,

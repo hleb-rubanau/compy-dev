@@ -10,9 +10,10 @@ local class = require('util.class')
 --- @oaram CC ConsoleController
 local function new(M, CC)
   return {
-    -- Host chrome, not a transient widget: always_shown makes
-    -- hide() refuse rather than leave the editor without an
-    -- input line. Selection is disabled on both surfaces.
+    -- A permanent input surface (the console's/editor's),
+    -- not a transient widget: always_shown makes hide()
+    -- refuse rather than leave the editor without an input
+    -- line. Selection is disabled on both surfaces.
     input = UserInputController(M.input, true, true)
         :always_shown(),
     model = M,
@@ -50,7 +51,7 @@ end
 EditorController = class.create(new)
 
 --- @private
---- DEPRECATED (owner ruling, 2026-09-06). Ctrl+Shift+S
+--- DEPRECATED (owner ruling). Ctrl+Shift+S
 --- leaves the editor and stays bound, but Shift+Esc is the
 --- supported way out and this chord is on its way to
 --- removal. Its author calls it inherited, absent from the
@@ -467,9 +468,9 @@ function EditorController:_handle_submit(go)
         if #chunks < #raw_chunks then
           local rc = raw_chunks
           if rc[1]:is_empty() then
-            --- Leading empty in raw may be editor padding before the
-            --- first real block; do not restore it when pprint already
-            --- starts with content.
+            --- Leading empty in raw may be editor padding
+            --- before the first real block; do not restore
+            --- it when pprint already starts with content.
             local has_leading_content = chunks[1]
                 and chunks[1]:is_empty()
             if not has_leading_content then
@@ -554,7 +555,8 @@ end
 --- @param btn integer
 --- @param touch boolean?
 --- @param presses integer? --- 2 on a double click
-function EditorController:mousepressed(x, y, btn, touch, presses)
+function EditorController:mousepressed(x, y, btn, touch,
+  presses)
   if btn == 1 then
     local ln = self.view:get_current_buffer():line_at(y)
     if ln then
@@ -1368,8 +1370,8 @@ function EditorController:_normal_mode_keys(k)
   local function navigate()
     -- peek: the view moves, the selection stays (2.2).
     -- Alt-* in both modes; block moves live in the
-    -- reorder mode (Ctrl+M) only, and the line swap is
-    -- gone with them — Alt is scrolling, nothing else
+    -- reorder mode (Ctrl+M) only. Alt is scrolling,
+    -- nothing else
     if Key.alt() then
       if k == "up" then
         self:_scroll('up', false, 1)

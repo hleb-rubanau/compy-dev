@@ -32,13 +32,12 @@ local new = function(model, disable_selection,
     model = model,
     disable_selection = disable_selection,
     allow_duplicate_line = allow_duplicate_line,
-    -- is_shown() reads this, never love.state (owner ruling
-    -- 2026-07-20).
+    -- is_shown() reads this, never love.state (owner ruling).
     shown = false,
-    -- For the project widget, compy.input.callbacks RESOLVES to
-    -- this table for as long as this widget is the current one
-    -- (owner ruling 2026-07-20, re-made 2026-08-27); console
-    -- and editor set their own directly.
+    -- For the project widget, compy.input.callbacks RESOLVES
+    -- to this table for as long as this widget is the current
+    -- one (owner ruling); console and editor set their own
+    -- directly.
     callbacks = default_callbacks(),
   }
 end
@@ -65,10 +64,9 @@ end
 --- The evaluator stops holding a copy and RESOLVES the slot
 --- instead, so a direct `compy.input.callbacks.highlighter`
 --- assignment and a show()/configure() key are the same write
---- by construction — rather than by a copy step every writing
---- path has to remember, which is the step that was missed
---- (doc/development/technical_debt/input.md,
---- "T-HL-TWO-HOMES").
+--- by construction
+--- (doc/development/internals/user_input.md,
+--- "One home for the highlighter").
 ---
 --- Resolution, not a forwarding function, because the model
 --- branches on the TRUTH of `ev.highlighter`: with no
@@ -324,7 +322,7 @@ end
 
 --- The content baseline, which only ACTIVATION sets: text
 --- given is the content, text ABSENT leaves the content alone
---- (D-CFG-BOUNDARY, statement 1, amended 2026-09-07). So a
+--- (D-CFG-BOUNDARY, statement 1). So a
 --- re-show finds what the last lifecycle verb left, and
 --- destruction has exactly one home — the (verb x outcome)
 --- flags of D-LIFECYCLE-FLAGS. `false` is the uniform unset
@@ -381,8 +379,8 @@ function UserInputController:show(config)
   -- (warn-don't-swallow): a plain show() over an active widget
   -- is suppressed; say so.
   if self.shown and not cfg.force then
-    Log.warn('UserInputController:show ignored — widget already'
-      .. ' active (pass force=true to override)')
+    Log.warn('UserInputController:show ignored — widget'
+      .. ' already active (pass force=true to override)')
     return
   end
   open_widget(self, cfg)
@@ -422,12 +420,13 @@ end
 -- widget runs them on Enter/Escape as an ordinary consumer
 -- (never a routing concern) and signals out through its
 -- callbacks. before_/after_submit and before_/after_cancel are
--- read off self.callbacks — the same table a project populates
--- via compy.input.callbacks.
+-- read off self.callbacks — the same table a project
+-- populates via compy.input.callbacks.
 
 --- Run the project's validator, if it set one, and record its
---- errors on the model — which is what locks the session until
---- keypressed()'s has_error()/clear_error() releases it. No
+--- errors on the model — which is what locks the session
+--- until keypressed()'s has_error()/clear_error() releases
+--- it. No
 --- validator accepts unconditionally.
 --- @param model UserInputModel
 --- @param validator function?
@@ -448,8 +447,9 @@ local function debug_noop(label)
 end
 
 --- Invoke a widget callback by name (self.callbacks[name]);
---- absent → no-op + debug-log. The return value is honoured by
---- the caller only where noted (before_cancel veto).
+--- absent → no-op + debug-log. The return value is
+--- honoured by the caller only where noted (before_cancel
+--- veto).
 --- @param self UserInputController
 --- @param name string
 --- @return any
@@ -475,9 +475,10 @@ local function dispose(self, clear, hide)
 end
 
 --- Submit flow (doc/development/decisions/input.md,
---- D-EDIT-LIFECYCLE): the widget's own Enter behaviour. A truthy
---- before_submit VETOES; otherwise empty guard → validate →
---- dispose → deliver (fires on_text_entered) → after_submit.
+--- D-EDIT-LIFECYCLE): the widget's own Enter behaviour. A
+--- truthy before_submit VETOES; otherwise empty guard →
+--- validate → dispose → deliver (fires on_text_entered) →
+--- after_submit.
 --- after_submit defaults to a no-op, so the widget stays shown
 --- unless a flag or a callback takes it down.  All three
 --- content-bearing callbacks receive the SAME concatenated
@@ -520,8 +521,9 @@ end
 --- after_cancel's payload is the content the cancel was about,
 --- which a flag may already have cleared out of the widget.
 --- Both outcomes are this instance's flags, so a widget that
---- seats neither and sets no callbacks does NOTHING here — the
---- class default, and what makes the editor's bare Escape inert
+--- seats neither and sets no callbacks does NOTHING here —
+--- the class default, and what makes the editor's bare
+--- Escape inert
 --- (D-LIFECYCLE-FLAGS, statement 3).
 function UserInputController:cancel_flow()
   local draft = string.unlines(self.model:get_text())
@@ -536,8 +538,9 @@ end
 --- event handlers ---
 ----------------------
 
---- Whether this widget is currently shown — a strictly INTERNAL
---- flag (owner ruling 2026-07-20; no love.state reach). Toggled
+--- Whether this widget is currently shown — a strictly
+--- INTERNAL flag (owner ruling; no love.state reach).
+--- Toggled
 --- by show()/hide(); always-active widgets (console/editor) set
 --- it true at construction. The project route consumes an event
 --- at the widget only while shown; the view skips its per-frame
@@ -553,13 +556,9 @@ end
 --- leaves shown=false and toggles it with show()/hide().
 ---
 --- The name is enforced, not aspirational: hide() refuses on
---- such a widget. Shownness became a flag with this API
---- (pre-feature there was none: a widget was live iff
---- love.state.user_input was set), and a flag anything may
---- clear is a convention, not the guarantee the name claims.
---- Ratified at doc/development/decisions/input.md,
---- D-WIDGET-AT-BOOT: pre-feature nothing could hide these
---- surfaces, and the guard is what re-states that.
+--- such a widget. A flag anything may clear is a convention,
+--- not the guarantee the name claims — ratified at
+--- doc/development/decisions/input.md, D-WIDGET-AT-BOOT.
 --- @return UserInputController self
 function UserInputController:always_shown()
   self.shown = true
@@ -576,8 +575,8 @@ end
 ---
 --- A method rather than constructor arguments: the two
 --- existing capabilities are positional, and four more would
---- put the constructor at seven against agents/rules.md's
---- limit of four.
+--- put the constructor at seven, over the four-parameter
+--- limit the coding conventions set.
 --- @param flags table
 --- @return UserInputController self
 function UserInputController:seat_lifecycle(flags)
@@ -597,9 +596,8 @@ end
 --- @param k string
 --- @param sc string?    scancode
 --- @param isr boolean?  key repeat
--- No return value: the old limit-flag return channel is
--- retired (D-EDIT-CALLBACKS) — on_limit_reached is the sole
--- notification path now (see "emit_limit" below).
+-- No return value: on_limit_reached (below) is the sole
+-- notification path for a hit limit (D-EDIT-CALLBACKS).
 -- Its editing logic reads modifiers via Key.* (love.keyboard).
 function UserInputController:keypressed(k, sc, isr)
   if not self.shown then
@@ -620,12 +618,9 @@ function UserInputController:keypressed(k, sc, isr)
   local input = self.model
 
   -- Navigation-boundary output
-  -- (doc/development/decisions/input.md,
-  -- D-EDIT-CALLBACKS): the widget signals a hit limit ONLY
-  -- through on_limit_reached —
-  -- the keypressed return value no longer carries a limit flag
-  -- (retired; console reads history via its own
-  -- on_limit_reached callback).
+  -- (doc/development/decisions/input.md, D-EDIT-CALLBACKS):
+  -- the widget signals a hit limit ONLY through
+  -- on_limit_reached; console reads it via its own callback.
   local function emit_limit(dir, scope)
     local cb = self.callbacks.on_limit_reached
     if cb then cb(dir, scope) end
@@ -816,8 +811,9 @@ function UserInputController:keypressed(k, sc, isr)
   copypaste()
   selection()
 
-  -- The widget's own submit/cancel flow (D-EDIT-LIFECYCLE): plain
-  -- Enter submits, plain Escape cancels — ordinary widget
+  -- The widget's own submit/cancel flow (D-EDIT-LIFECYCLE):
+  -- plain Enter submits, plain Escape cancels — ordinary
+  -- widget
   -- behaviour, out through callbacks. Shift+Enter is a newline
   -- (newline() above); Ctrl+Escape is not a cancel.
   -- Editor/console callers that must not run these consume the
