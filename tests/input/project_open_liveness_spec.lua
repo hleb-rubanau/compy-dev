@@ -26,8 +26,8 @@
 
 local F = require('tests.helpers.input_fixture')
 
-describe('input surface: inbound events — a project stays live'
-  .. ' without update or draw #input', function()
+describe('input surface: inbound events — a project stays'
+  .. ' live without update or draw #input', function()
   -- Fixture is built in setup (not at module load); busted 2
   -- insulates _G/package.loaded per file, so this file runs
   -- standalone too.
@@ -70,7 +70,8 @@ describe('input surface: inbound events — a project stays live'
       assert.is_true(aborted)
     end)
 
-  it('Ctrl+Esc quits the app when nothing is left to go back to',
+  it('Ctrl+Esc quits the app when nothing is left to go' ..
+    ' back to',
     function()
       local calls = stub_stop()
       love.state.app_state = 'project_open'

@@ -36,11 +36,12 @@ describe('input surface: inbound events — what nobody'
     return F.console:get_text()
   end
 
-  -- The regression this pays: at the PR base a project that
-  -- defined no keyboard handler never took love.keypressed,
-  -- so the prompt stayed live once the run returned
-  -- (doc/development/technical_debt/input.md,
-  -- T-ROUTE-EATS-UNCONSUMED).
+  -- The regression this pays: an unconsumed keypressed event
+  -- falls through to the console
+  -- (doc/development/internals/event_dispatch_layers.md, "What
+  -- becomes of an event nobody consumed"), so the prompt stays
+  -- live even though this project takes every channel for the
+  -- whole run.
   it('a project that hooks nothing leaves the prompt live',
     function()
       F.activate_project({ })

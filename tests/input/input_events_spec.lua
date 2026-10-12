@@ -52,19 +52,20 @@ describe('input surface: inbound events — dispatch #input',
   -- A shortcut combo is modifiers plus a trigger, and the
   -- modifiers are optional: an unmodified key is a combo of one
   -- token, so `shortcuts.keypressed['a']` binds a bare 'a'.
-  -- Only the CLASS form needs a modifier — `'*'` alone raises,
-  -- because a class needs modifiers to be a class of.
+  -- Only the CLASS form needs a modifier — `'*'` alone
+  -- raises, because a class needs modifiers to be a class
+  -- of.
 
   -- Every declared channel reaches the route. Written as a
   -- sweep over the list rather than a case per channel: the
   -- gateway declares twelve entries and the route installs
   -- twelve handlers, and the thing worth asserting is that
   -- those two lists agree — which a hand-picked sample cannot
-  -- say. `wheelmoved` in particular used to work by accident
-  -- (LÖVE's own stock entry survived, because the gateway
-  -- writes INTO love.handlers rather than replacing it) and
-  -- was only visible as missing in a fixture that builds the
-  -- table fresh.
+  -- say. `wheelmoved` in particular is easy to miss: the
+  -- gateway writes INTO love.handlers rather than replacing
+  -- it, so LÖVE's own stock entry can silently stand in for
+  -- the route's, invisible in a fixture that builds the table
+  -- fresh.
   describe('every channel reaches the route', function()
 
     -- LÖVE's own argument lists, enough of each to be routed.
@@ -126,8 +127,9 @@ describe('input surface: inbound events — dispatch #input',
   end)
 
   -- doc/development/decisions/input.md, D-CHAIN-OF-3: only the
-  -- shortcut tier is KEYED — it participates for its own combo
-  -- and for nothing else, while the hook and the widget are
+  -- shortcut tier is KEYED — it participates for its own
+  -- combo and for nothing else, while the hook and the
+  -- widget are
   -- unkeyed and therefore see every event their channel
   -- carries. The groups above pin what a MATCHED shortcut does;
   -- these pin its silence on every other key, once per channel,
@@ -193,8 +195,9 @@ describe('input surface: inbound events — dispatch #input',
   -- consuming, or leave them undefined; `seen` is the mnemonic
   -- trace and the widget's text is the observable terminal
   -- (backspace edits 'ab' -> 'a' exactly when the widget runs).
-  -- One channel, one press per case — anything needing a second
-  -- event or another channel is pinned in the groups above,
+  -- One channel, one press per case — anything needing a
+  -- second event or another channel is pinned in the groups
+  -- above,
   -- which is why they are not folded in here.
   describe('the interception matrix', function()
 
@@ -203,16 +206,19 @@ describe('input surface: inbound events — dispatch #input',
     local cases = {
       { name = 'no participant defined: the widget still runs',
         widget_runs = true, expect = { } },
-      { name = 'both pass through: shortcut, hook, then the widget',
+      { name = 'both pass through: shortcut, hook, then the'
+          .. ' widget',
         shortcut = PASS, hook = PASS,
         widget_runs = true, expect = { 'shortcut', 'hook' } },
       { name = 'a consuming shortcut stops the walk at itself',
         shortcut = CONSUME, hook = PASS,
         widget_runs = false, expect = { 'shortcut' } },
-      { name = 'a consuming hook stops the walk before the widget',
+      { name = 'a consuming hook stops the walk before the'
+          .. ' widget',
         shortcut = PASS, hook = CONSUME,
         widget_runs = false, expect = { 'shortcut', 'hook' } },
-      { name = 'a missing shortcut does not stop a consuming hook',
+      { name = 'a missing shortcut does not stop a' ..
+          ' consuming hook',
         hook = CONSUME,
         widget_runs = false, expect = { 'hook' } },
       { name = 'a missing shortcut does not stop the widget',
@@ -280,8 +286,8 @@ describe('input surface: inbound events — dispatch #input',
 
     -- The registration side lower-cases the whole combo, so a
     -- textinput channel — the only one that can deliver an
-    -- upper-case trigger — must match on the character the user
-    -- actually typed, not only on its lower-case twin.
+    -- upper-case trigger — must match on the character the
+    -- user actually typed, not only on its lower-case twin.
     it('a textinput combo fires on an upper-case character',
       function()
         local fired = false
@@ -320,10 +326,10 @@ describe('input surface: inbound events — dispatch #input',
       end)
 
     -- doc/development/decisions/input.md, D-COMBO-TABLES: the
-    -- per-event tables are distinct — asserted by BEHAVIOUR (a
-    -- registration on one channel does not fire on another)
-    -- rather than by reading the table structure, which was the
-    -- smell the previous form had.
+    -- per-event tables are distinct — asserted by
+    -- BEHAVIOUR (a registration on one channel does not
+    -- fire on another)
+    -- rather than by reading the table structure.
     it('a keypressed combo does not fire on textinput',
       function()
         local leaked = false
@@ -336,7 +342,8 @@ describe('input surface: inbound events — dispatch #input',
 
     -- The hook half of the same claim: hooks are per-event too,
     -- so a keypressed hook must not see a textinput event.
-    it('a keypressed hook does not fire on textinput', function()
+    it('a keypressed hook does not fire on textinput',
+      function()
       local leaked = false
       local input = F.activate_project()
       input.hooks.keypressed =
@@ -350,8 +357,9 @@ describe('input surface: inbound events — dispatch #input',
   -- (doc/development/decisions/input.md, D-COMBO-SHAPE). The
   -- rule is enforced at registration because the canonical form
   -- silently kept the LAST non-modifier token before:
-  -- 'ctrl+a+b' became 'ctrl+b', and 'a+b+*' became a bare '*' —
-  -- the widest possible binding written as the narrowest.
+  -- 'ctrl+a+b' became 'ctrl+b', and 'a+b+*' became a bare
+  -- '*' — the widest possible binding written as the
+  -- narrowest.
   -- Raising is the same treatment show/configure give an
   -- unrecognised key (D-UNKNOWN-RAISES).
   describe('the combo registration contract', function()
@@ -363,7 +371,8 @@ describe('input surface: inbound events — dispatch #input',
       end)
     end)
 
-    it('rejects a class combo with a trigger beside it', function()
+    it('rejects a class combo with a trigger beside it',
+      function()
       local input = F.activate_project()
       assert.has_error(function()
         input.shortcuts.keypressed['a+b+*'] = function() end
@@ -372,8 +381,9 @@ describe('input surface: inbound events — dispatch #input',
 
     -- The legal shapes stay legal: a bare trigger, modifiers
     -- plus a trigger, and modifiers plus the class marker.
-    -- Acceptance and canonicalisation only — 'Ctrl+Alt+S' reads
-    -- back as 'ctrl+alt+s'. That each shape then FIRES is the
+    -- Acceptance and canonicalisation only —
+    -- 'Ctrl+Alt+S' reads back as 'ctrl+alt+s'. That each
+    -- shape then FIRES is the
     -- interception matrix above (bare trigger, exact combo) and
     -- the 'combo classes' block below; asserting it again here
     -- would say it a third time.
@@ -445,14 +455,16 @@ describe('input surface: inbound events — dispatch #input',
     -- An EXACT two-modifier combo, which nothing else in the
     -- suite drove: the cases around this one bind one modifier
     -- plus a trigger, or two modifiers plus the class marker.
-    -- Both halves of a smoke finding live here — two modifiers
-    -- serialising in canonical order, and a non-character
+    -- Both halves of a smoke finding live here — two
+    -- modifiers serialising in canonical order, and a
+    -- non-character
     -- trigger (an arrow) naming itself. A shipped example binds
     -- exactly this shape (examples/keyboard registers
     -- 'ctrl+alt+up' for its difficulty notch) and was reported
     -- as doing nothing; the platform half of that report is
     -- what this case answers.
-    it('a two-modifier combo fires on the real chord', function()
+    it('a two-modifier combo fires on the real chord',
+      function()
       local input = F.activate_project()
       local seen = { }
       input.shortcuts.keypressed['ctrl+alt+up'] = function(k)
@@ -522,8 +534,8 @@ describe('input surface: inbound events — dispatch #input',
   end)
 
   -- The dispatch wrappers live under compy.input.fn, named
-  -- for what they do to the EVENT — that is what a reader of a
-  -- registration table wants to know
+  -- for what they do to the EVENT — that is what a reader
+  -- of a registration table wants to know
   -- (doc/development/decisions/input.md, D-IGNORE-REPEAT and
   -- D-STOP-AND-SIDE).
   -- They are orthogonal: ignore_repeat is about whether the
@@ -583,7 +595,8 @@ describe('input surface: inbound events — dispatch #input',
     -- key keeps driving what is below while the binding acts
     -- once. 'abcd' loses one character to the fresh press and
     -- one to each repeat that reaches the widget.
-    it('the repeat it skips still reaches the widget', function()
+    it('the repeat it skips still reaches the widget',
+      function()
       local input = F.activate_project()
       input.shortcuts.keypressed['backspace'] =
           input.fn.ignore_repeat(function() end)
@@ -699,8 +712,9 @@ describe('input surface: inbound events — dispatch #input',
       assert.is_true(reached)
     end)
 
-    -- Even a handler that returns truthy does not consume — the
-    -- point of the wrapper is that this binding is a side
+    -- Even a handler that returns truthy does not consume —
+    -- the point of the wrapper is that this binding is a
+    -- side
     -- effect, and the declaration outranks whatever the
     -- function says.
     it('does not consume even for a truthy handler', function()
@@ -727,7 +741,9 @@ describe('input surface: inbound events — dispatch #input',
         local input = F.activate_project()
         input.shortcuts.keypressed['backspace'] =
             input.fn.stop_here(
-              input.fn.ignore_repeat(function() ran = ran + 1 end))
+              input.fn.ignore_repeat(function()
+                ran = ran + 1
+              end))
         F.show_widget({ text = 'abcd' })
         F.session.press('backspace')
         F.session.repeat_press('backspace')
@@ -739,13 +755,16 @@ describe('input surface: inbound events — dispatch #input',
     -- The other pairing is a once-per-press side effect: it
     -- acts on the fresh press only and never claims the key, so
     -- the widget still receives every one of them.
-    it('side_run over ignore_repeat acts once and claims nothing',
+    it('side_run over ignore_repeat acts once and claims' ..
+      ' nothing',
       function()
         local ran = 0
         local input = F.activate_project()
         input.shortcuts.keypressed['backspace'] =
             input.fn.side_run(
-              input.fn.ignore_repeat(function() ran = ran + 1 end))
+              input.fn.ignore_repeat(function()
+                ran = ran + 1
+              end))
         F.show_widget({ text = 'abcd' })
         F.session.press('backspace')
         F.session.repeat_press('backspace')
@@ -759,8 +778,9 @@ describe('input surface: inbound events — dispatch #input',
   -- (doc/development/decisions/input.md, D-LOVE-ARGS) ---
 
   describe('participant signatures', function()
-    -- keypressed participants receive LÖVE's own argument list,
-    -- unchanged: (key, scancode, isrepeat). Nothing about held
+    -- keypressed participants receive LÖVE's own argument
+    -- list, unchanged: (key, scancode, isrepeat). Nothing
+    -- about held
     -- keys is threaded as an argument; a project that needs
     -- them asks the keyboard (doc/input_api.md, "Held keys").
     -- Asserted over the WHOLE chain, not one participant: every
@@ -867,9 +887,10 @@ describe('input surface: inbound events — dispatch #input',
     -- the event arrives.
 
     -- doc/development/decisions/input.md, D-HOOKS-SEEDED: the
-    -- default hook neither edits nor consumes — the event falls
-    -- through to the widget, which performs the edit.
-    it('with no project hook set, the event passes through to the widget',
+    -- default hook neither edits nor consumes — the event
+    -- falls through to the widget, which performs the edit.
+    it('with no project hook set, the event passes' ..
+      ' through to the widget',
       function()
         F.activate_project()
         F.show_widget({ text = 'ab' })
@@ -882,8 +903,9 @@ describe('input surface: inbound events — dispatch #input',
     -- unhandled event reached the console below. This feature
     -- took every channel for the whole run and ended that; the
     -- fall-through gives it back
-    -- (doc/development/technical_debt/input.md,
-    -- T-ROUTE-EATS-UNCONSUMED). What the route owns is
+    -- (doc/development/internals/event_dispatch_layers.md,
+    -- "What becomes of an event nobody consumed"). What
+    -- the route owns is
     -- the WALK — a hidden widget still mutates nothing —
     -- and what nobody consumed goes home to the console.
     -- The gate and the boundaries live in
@@ -966,7 +988,8 @@ describe('input surface: inbound events — dispatch #input',
     -- doc/development/decisions/input.md, D-HOOKS-SEEDED (hooks
     -- install path): a truthy callback intercepts the widget; a
     -- present-but-falsey callback falls through.
-    it('a truthy textinput hook intercepts; falsey reaches the widget',
+    it('a truthy textinput hook intercepts; falsey reaches' ..
+      ' the widget',
       function()
         local input = F.activate_project()
         F.show_widget()
@@ -985,8 +1008,7 @@ describe('input surface: inbound events — dispatch #input',
   describe('the project-handler install path', function()
     -- doc/development/decisions/input.md, D-HOOKS-SEEDED: a
     -- project handler is a plain hook participant that fires
-    -- REGARDLESS of widget-shown state (the reversed
-    -- suppress-while-shown mutation is gone). Fires in all
+    -- REGARDLESS of widget-shown state. Fires in all
     -- THREE widget states — never shown, shown, and
     -- shown-then-hidden (widget absence has two distinct forms)
     -- — on both the keypressed and keyreleased channels: a
@@ -994,7 +1016,8 @@ describe('input surface: inbound events — dispatch #input',
     -- consumption. A handler is seeded into hooks[event], so
     -- this is the hook contract, not a handler-only one
     -- (seed_hooks, projectInputController.lua).
-    it('a project handler fires whether or not the widget is shown',
+    it('a project handler fires whether or not the widget' ..
+      ' is shown',
       function()
         local seen = { pressed = 0, released = 0 }
         F.activate_project({
@@ -1050,12 +1073,11 @@ describe('input surface: inbound events — dispatch #input',
     -- doc/development/decisions/input.md, D-HOOKS-SEEDED,
     -- "AMENDED 2026-09-08 — a seeded handler consumes": a
     -- captured love.* handler owns its channel the way it does
-    -- under plain LÖVE, so its return value decides nothing and
-    -- the widget below it receives nothing. Asserted on the
+    -- under plain LÖVE, so its return value decides nothing
+    -- and the widget below it receives nothing. Asserted on
+    -- the
     -- textinput channel, so all three are covered across the
-    -- handler cases. (This case previously pinned the opposite
-    -- — falsey falls through to the widget — which is the
-    -- behaviour the amendment reverses.)
+    -- handler cases.
     it('a falsey handler textinput still shields the widget',
       function()
         F.activate_project({
@@ -1068,12 +1090,14 @@ describe('input surface: inbound events — dispatch #input',
 
     -- doc/development/decisions/input.md, D-HOOKS-SEEDED
     -- precedence: an explicit hook takes precedence over the
-    -- captured handler — the handler never seeds the hook when
-    -- an explicit hook is set (no "replace" relation).
+    -- captured handler — the handler never seeds the hook
+    -- when an explicit hook is set (no "replace" relation).
     it('an explicit hook takes precedence over the handler',
       function()
         local handler_hits, cb_hits = 0, 0
-        local function bump() handler_hits = handler_hits + 1 end
+        local function bump()
+          handler_hits = handler_hits + 1
+        end
     -- Audited: BOTH paths are exercised in this file, not one.
     -- F.activate_project({ keypressed = f }) is the legacy path
     -- — f is the project's sandboxed love.keypressed, seeded
@@ -1156,8 +1180,9 @@ describe('input surface: inbound events — dispatch #input',
     -- environment does not get one: the console's own
     -- `compy.input` resolved the same widget a running project
     -- holds, so a command typed at the prompt could
-    -- reconfigure it (doc/development/technical_debt/input.md,
-    -- T-CONSOLE-SURFACE-INTERFERES, paid by deletion). The
+    -- reconfigure it, and the release removes the member
+    -- (doc/development/internals/console.md, "Three
+    -- Environments"). The
     -- refusal to assign stays in both namespaces, so a
     -- console-side write fails loudly rather than creating a
     -- fake surface that dispatches to nobody.
@@ -1229,10 +1254,7 @@ describe('input surface: inbound events — dispatch #input',
   -- pointer hook is an ordinary participant: it consumes on a
   -- truthy return and falls through on a falsey one, and the
   -- widget is the chain's terminal rather than a parallel
-  -- recipient. Before this, pointer was an unstructured
-  -- broadcast — the widget got the event first, the project's
-  -- handler got it unconditionally after, and neither could
-  -- stop the other.
+  -- recipient.
   describe('pointer runs the dispatch chain', function()
     it('a seeded pointer handler receives the event',
       function()
@@ -1255,10 +1277,8 @@ describe('input surface: inbound events — dispatch #input',
         assert.equal(1, got)
       end)
 
-    -- Falls through on falsey, so the widget still gets it —
-    -- this is the pre-unification "both receive it" behaviour,
-    -- now an ordinary consequence of the chain rather than a
-    -- broadcast. The selection is the widget's observable.
+    -- Falls through on falsey, so the widget still gets it.
+    -- The selection is the widget's observable.
     it('a non-consuming hook still lets the widget see it',
       function()
         local input = F.activate_project()
@@ -1272,8 +1292,7 @@ describe('input surface: inbound events — dispatch #input',
         assert.is_true(w.model:has_selection())
       end)
 
-    -- The capability the broadcast could not express: a shown
-    -- widget can now be starved of a click aimed past it.
+    -- A shown widget can be starved of a click aimed past it.
     it('a consuming hook stops the event before the widget',
       function()
         local input = F.activate_project()

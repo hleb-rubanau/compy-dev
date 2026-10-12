@@ -57,9 +57,10 @@ local function mock_runtime()
     },
     paths      = { project_path = '/tmp' },
     filesystem = { getInfo = function() end },
-    -- The console prepares serial support at build time and asks
-    -- love.system.getOS() to pick a backend; the mock love has no
-    -- `system`, so stub it (a desktop OS -> the null backend).
+    -- The console prepares serial support at build time and
+    -- asks love.system.getOS() to pick a backend; the mock
+    -- love has no `system`, so stub it (a desktop OS -> the
+    -- null backend).
     system     = { getOS = function() return 'Linux' end },
   })
 end
@@ -130,8 +131,9 @@ local function build_console(cfg)
   return CC
 end
 
--- A project widget, published to love.state.user_input_controller
--- the way production's build_input_widget does at the run seam;
+-- A project widget, published to
+-- love.state.user_input_controller the way production's
+-- build_input_widget does at the run seam;
 -- the compy.input wrappers resolve it from there.
 local function build_widget(cfg)
   -- Its OWN evaluator, as production's build_input_widget does:
@@ -146,7 +148,8 @@ local function build_widget(cfg)
   -- something else (doc/development/decisions/input.md,
   -- D-LIFECYCLE-FLAGS, statement 3).
   c:seat_lifecycle({ clear_on_submit = true })
-  c:init_view({ render = function() end, draw = function() end })
+  c:init_view({ render = function() end,
+    draw = function() end })
   -- The same call production makes, not a fixture-local
   -- equivalent: a widget built here must be wired the way
   -- build_input_widget wires one.
@@ -212,8 +215,8 @@ end
 -- Symmetric partner to F.setup, deliberately shallow:
 -- require-cached class globals cannot be un-required, and
 -- busted 2's per-file insulation reverts _G/package.loaded
--- anyway — so we only undo the fixture's own semantic state and
--- the two globals mock_love writes.
+-- anyway — so we only undo the fixture's own semantic
+-- state and the two globals mock_love writes.
 function F.teardown()
   if Controller and Controller.project_input then
     Controller.project_input:deactivate()
@@ -280,16 +283,17 @@ function F.activate_project(handlers)
   return F.compy_input()
 end
 
--- The SIMPLE surface's namespace (compy.ask / on_answer /
--- on_key / unask), resolved exactly as a project resolves it —
--- off the live project env, so a case reads the same clone the
+-- The BASIC surface's namespace (compy.ask / on_answer /
+-- on_key / unask), resolved exactly as a project resolves
+-- it — off the live project env, so a case reads the same
+-- clone the
 -- stubs read at fire time (D-SIMPLE-SURFACE, statement 4).
 function F.compy()
   return CC:get_project_env().compy
 end
 
--- activate_project's simple-surface twin: same narrow seam,
--- returning the namespace instead of the precise API.
+-- activate_project's basic-surface twin: same narrow seam,
+-- returning the namespace instead of the advanced API.
 function F.activate_simple(handlers)
   F.activate_project(handlers)
   return F.compy()
@@ -304,7 +308,8 @@ end
 function F.show_selectable_widget(lines)
   local m = UserInputModel(cfg, InputEvalText)
   local w = UserInputController(m, false)
-  w:init_view({ render = function() end, draw = function() end })
+  w:init_view({ render = function() end,
+    draw = function() end })
   w.model:set_text(lines or { 'aa', 'bb', 'cc' })
   love.state.user_input = { M = m, C = w, V = w.view }
   -- The dispatch chain resolves its terminal consumer from
@@ -367,17 +372,13 @@ function F.reset()
   love.state.editor             = nil
   -- Otherwise leaks into the next test's suspend(): a
   -- stale message from an earlier suspend_run() would set
-  -- an unrelated console error (discovered via the route-
-  -- lifecycle inspect case, m5c chunk 4).
+  -- an unrelated console error.
   love.state.suspend_msg        = nil
   love.update(1.0)
   CC.input:clear()
   CC.editor.input:clear()
   -- Only the widget's CONTENT: production teardown hides the
-  -- widget but deliberately keeps its text. `widget.shown =
-  -- false` used to be forced here too, which quietly
-  -- compensated for stop_project_run not lowering the flag —
-  -- and hid that bug from the whole suite.
+  -- widget but deliberately keeps its text.
   widget:clear()
 end
 

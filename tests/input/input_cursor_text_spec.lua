@@ -7,8 +7,8 @@
 -- (1.0.0-rc20260712) — covers the compy.input surface.
 
 -- Cursor and text surface: get_cursor / set_cursor / set_text,
--- driven through F.compy_input() — exactly what a project sees
--- (doc/input_api.md, "Live changes";
+-- driven through F.compy_input() — exactly what a
+-- project sees (doc/input_api.md, "Live changes";
 -- doc/development/internals/user_input.md, "Cursor manipulation
 -- and \"reset\""). Implementation:
 -- model/input/userInputModel.lua,
@@ -16,7 +16,8 @@
 
 local F = require('tests.helpers.input_fixture')
 
-describe('input surface: widget control — cursor and text #input',
+describe('input surface: widget control — cursor and' ..
+  ' text #input',
   function()
   setup(function() F.setup() end)
   teardown(function() F.teardown() end)
@@ -25,8 +26,9 @@ describe('input surface: widget control — cursor and text #input',
 
   -- These three are non-assignable methods (NOT in
   -- INPUT_CALLBACKS), so they ride the same frozen-surface
-  -- boundary as show/hide — doc/development/decisions/input.md,
-  -- D-FROZEN-SHELL (what a project may assign).
+  -- boundary as show/hide —
+  -- doc/development/decisions/input.md, D-FROZEN-SHELL
+  -- (what a project may assign).
 
 
   describe("get_cursor", function()
@@ -115,8 +117,9 @@ describe('input surface: widget control — cursor and text #input',
       assert.same(6, c) -- 'hello' end (len 5 + 1)
     end)
 
-    -- 'привет' is 6 characters in 12 bytes, so a byte-counted
-    -- clamp would accept anything up to 13 and leave the caret
+    -- 'привет' is 6 characters in 12 bytes, so a
+    -- byte-counted clamp would accept anything up to 13 and
+    -- leave the caret
     -- past the end of the line. col is a caret position between
     -- CHARACTERS (doc/input_api.md, "Live changes"), which is
     -- also what every other cursor move in the model counts.
@@ -312,8 +315,8 @@ describe('input surface: widget control — cursor and text #input',
     describe("refuses a non-string element", function()
       -- The last three are the ones a walk with ipairs lets
       -- through: it stops at a hole and never sees a
-      -- non-integer key, so each of these used to be accepted
-      -- and then lose content downstream without a word.
+      -- non-integer key, so each of these would slip past it
+      -- and lose content downstream without a word.
       local bad = {
         ['a number'] = { 'a', 42 },
         ['only a number'] = { 42 },

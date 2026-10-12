@@ -1,6 +1,6 @@
 -- Availability: introduced with the Compy input API
--- (1.0.0-rc20260712) — route connect/disconnect, stop teardown
--- and the compy.before_exit hook.
+-- (1.0.0-rc20260712) — route connect/disconnect, stop
+-- teardown and the compy.before_exit hook.
 
 -- route connection lifecycle. Routing invariant
 -- (doc/development/decisions/input.md, D-ROUTE-OWNS):
@@ -21,7 +21,8 @@
 
 local F = require('tests.helpers.input_fixture')
 
-describe('input surface: inbound events — route lifetime #input',
+describe('input surface: inbound events — route lifetime' ..
+  ' #input',
   function()
   setup(function() F.setup() end)
   teardown(function() F.teardown() end)
@@ -46,15 +47,14 @@ describe('input surface: inbound events — route lifetime #input',
       -- The route is held by an OPEN project, not only by a
       -- running one: a non-blocking run reaching 'project_open'
       -- keeps every channel until the project actually stops.
-      -- That is the pre-feature lifecycle — at the PR base
-      -- nothing was released before suspend or stop. It is what
-      -- lets one release path serve every channel. Ctrl+Esc
-      -- is the documented way back to the console.
+      -- It is what lets one release path serve every channel.
+      -- Ctrl+Esc is the documented way back to the console.
       -- The hook consumes, so the console assertion witnesses
       -- exclusive delivery rather than the route's grip alone:
       -- since the fall-through landed
-      -- (doc/development/technical_debt/input.md,
-      -- T-ROUTE-EATS-UNCONSUMED) an explicit hook that returns
+      -- (doc/development/internals/event_dispatch_layers.md,
+      -- "What becomes of an event nobody consumed") an
+      -- explicit hook that returns
       -- falsey deliberately reaches the console, which is a
       -- different claim and has its own file
       -- (tests/input/input_console_fallthrough_spec.lua). What
@@ -74,9 +74,7 @@ describe('input surface: inbound events — route lifetime #input',
         end)
 
       -- The pen-and-paper case (sapper-like): clickable while
-      -- otherwise idle. It used to need an explicit exemption
-      -- from a keyboard-only release; with one lifetime for all
-      -- channels there is nothing to exempt.
+      -- otherwise idle.
       it('pointer stays on the route in project_open',
         function()
           local got = 0
@@ -168,18 +166,17 @@ describe('input surface: inbound events — route lifetime #input',
           F.activate_project()
           assert.is_nil(F.widget.callbacks.validator)
           assert.is_nil(F.widget.callbacks.on_text_entered)
-          assert.equal(noop, F.widget.callbacks.on_limit_reached)
+          assert.equal(noop,
+            F.widget.callbacks.on_limit_reached)
           assert.is_nil(F.widget.model.evaluator.highlighter)
         end)
 
       -- doc/development/decisions/input.md, D-ROUTE-LIFETIME:
       -- the next project meets the documented stay-open
       -- DEFAULTS -- neither the previous project's after_cancel
-      -- nor a nil-call error. It used to get them from a
-      -- re-seed at teardown; it now gets them from a widget
-      -- built with them (D-WIDGET-AT-BOOT as amended). The
-      -- guarantee is what is asserted here, not the mechanism
-      -- behind it.
+      -- nor a nil-call error. The guarantee is what is asserted
+      -- here, not the mechanism behind it (D-WIDGET-AT-BOOT as
+      -- amended).
       it('gives the next project the default callbacks',
         function()
           local first = F.activate_project()
@@ -210,8 +207,8 @@ describe('input surface: inbound events — route lifetime #input',
       -- must come up with the SECOND project's text — the
       -- widget's shown flag is part of what teardown resets,
       -- not merely the published love.state handle.
-      it('a second project gets its input widget after the first ' ..
-          'is stopped', function()
+      it('a second project gets its input widget after the' ..
+          ' first is stopped', function()
         local first = F.activate_project()
         first.show({ text = 'one' })
         F.cc:stop_project_run()
@@ -247,10 +244,7 @@ describe('input surface: inbound events — route lifetime #input',
       -- while hidden writes the project-owned fields straight
       -- onto the widget, and the widget dies with the run, so
       -- the write is run-scoped structurally rather than by
-      -- anyone remembering to clear a store. (This case used
-      -- to pass `text` as well; text/cursor at configure now
-      -- raise — doc/development/decisions/input.md,
-      -- D-CFG-BOUNDARY, statement 2.)
+      -- anyone remembering to clear a store.
       it('discards a prompt set by a hidden configure',
         function()
           local first = F.activate_project()
@@ -381,7 +375,8 @@ describe('input surface: inbound events — route lifetime #input',
       -- control that proves it is not vacuous: show() is a
       -- no-op over an active widget (D-WIDGET-AT-BOOT), so a
       -- surviving widget would silently swallow the next run's.
-      it('lets the next run show its own input widget', function()
+      it('lets the next run show its own input widget',
+        function()
         run_raising_project()
         local second = F.activate_project()
         second.show({ text = 'two' })
@@ -555,10 +550,10 @@ describe('input surface: inbound events — route lifetime #input',
           assert.equal('snapshot', love.state.app_state)
         end)
 
-      -- A raise aborts the WALK. Previously the wrapper caught
-      -- per-participant, answered falsey, and the walk carried
-      -- on — so a crashed project's widget edited the very
-      -- event that crashed it.
+      -- A raise aborts the WALK: catching it per-participant
+      -- and answering falsey would let it carry on, so a
+      -- crashed project's widget would edit the very event
+      -- that crashed it.
       it('a raise stops the walk before the widget',
         function()
           local input = F.activate_project()
@@ -733,27 +728,18 @@ describe('input surface: inbound events — route lifetime #input',
         end)
       end)
 
-      -- doc/development/technical_debt/input.md,
-      -- T-RELEASE-LEAVES-POINTER: the release used to hand back
-      -- three channels of the ten the route took, leaving the
-      -- seven pointer ones bound to the dispatcher it had just
-      -- emptied. Asserted through the ERROR CHANNEL rather
-      -- than has_no.errors: the route boundary contains the
-      -- raise and suspends, so a broken pointer channel logs
-      -- once per mouse movement instead of crashing, and only
-      -- the state flip is visible.
-      -- doc/development/technical_debt/input.md,
-      -- T-RELEASE-LEAVES-POINTER: the release handed back three
-      -- channels of the ten the route took, leaving the seven
-      -- pointer ones bound to the dispatcher it had just
+      -- The route releases every channel together
+      -- (doc/development/decisions/input.md, D-ONE-LIFETIME); a
+      -- failed release leaves the seven pointer channels of the
+      -- ten the route took bound to the dispatcher it had just
       -- deactivated.
       --
-      -- The precondition is a PRIOR SUCCESSFUL run, which is
-      -- not what the entry said: set_user_handlers (and with it
-      -- occupy_input) runs only on the ok branch of
-      -- run_user_code, so a project that raises at top level
-      -- never occupied anything. What strands the channels is a
-      -- run that succeeded and a LATER one that raised.
+      -- The precondition is a PRIOR SUCCESSFUL run:
+      -- set_user_handlers (and with it occupy_input) runs only
+      -- on the ok branch of run_user_code, so a project that
+      -- raises at top level never occupied anything. What
+      -- strands the channels is a run that succeeded and a
+      -- LATER one that raised.
       --
       -- Asserted as WHERE THE CHANNEL POINTS, not as a raise:
       -- the route boundary contains what the dead dispatcher

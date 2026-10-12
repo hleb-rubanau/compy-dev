@@ -77,13 +77,10 @@ describe('editor key contract #input', function()
 
   describe('bare Escape', function()
     -- D-EDITOR-KEYS row 2: bare Escape does NOTHING in
-    -- navigation and in editing. The tree used to disagree in
-    -- both, through one path — the key is unclaimed in
-    -- _normal_mode_keys, falls through to the widget, and the
-    -- widget turned it into a destructive cancel. The key
-    -- still falls through; what changed is that the editor's
-    -- widget seats no lifecycle flags, so the cancel does
-    -- nothing (doc/development/decisions/input.md,
+    -- navigation and in editing. The key is unclaimed in
+    -- _normal_mode_keys and falls through to the widget, whose
+    -- cancel does nothing because the editor's widget seats no
+    -- lifecycle flags (doc/development/decisions/input.md,
     -- D-LIFECYCLE-FLAGS, statement 3). Navigation's half is
     -- pinned next door, in input_widget_callbacks_spec.lua,
     -- "editor Escape falls through to the widget"; this is
@@ -137,10 +134,9 @@ describe('editor key contract #input', function()
     -- guard exists one level down — the rework's discard
     -- confirmation — and is unreachable from here because it
     -- is a method on EditorController while both exits sit
-    -- above the editor. Neither is new and neither is ours:
-    -- both are at the PR base. What this branch changed is
-    -- the layer, which is why they are in our contract at
-    -- all.
+    -- above the editor. This branch did not create these
+    -- exits — only moved the layer they sit at, which is why
+    -- they are in our contract at all.
     local left, ran, orig_finish, orig_run
 
     before_each(function()

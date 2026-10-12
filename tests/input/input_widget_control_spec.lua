@@ -15,8 +15,9 @@ describe('input surface: widget control #input', function()
 
   -- Widget activation / reset (doc/input_api.md,
   -- "`show(config)`"), driven through the public project
-  -- surface. F.compy_input() resolves project_env.compy.input —
-  -- exactly what a project sees. show({ text = ... }) seeds the
+  -- surface. F.compy_input() resolves
+  -- project_env.compy.input — exactly what a project sees.
+  -- show({ text = ... }) seeds the
   -- widget's CONTENT (the editable text) and show({ prompt =
   -- ... }) its label — a separate config key, one case each
   -- (same section). The "no cancel chain" facts are stable-now.
@@ -33,12 +34,12 @@ describe('input surface: widget control #input', function()
       assert.equal('name?', F.widget.model:get_label())
     end)
 
-    -- MIGRATED from "a fresh activation with no text is
-    -- empty", which pinned the rule D-CFG-BOUNDARY statement 1
-    -- retired on 2026-09-07: activation no longer destroys, so
-    -- a bare show() after a hide() finds what the last
-    -- lifecycle verb left. Destruction has exactly one home
-    -- now, and it is the (verb x outcome) flags.
+    -- Activation no longer destroys: text absent leaves content
+    -- alone (doc/development/decisions/input.md,
+    -- D-CFG-BOUNDARY, statement 1), so a bare show() after
+    -- a hide() finds what
+    -- the last lifecycle verb left. Destruction has exactly one
+    -- home now, and it is the (verb x outcome) flags.
     it('a bare re-activation keeps the content', function()
       local input = F.compy_input()
       input.show({ text = 'hello' })
@@ -250,11 +251,10 @@ describe('input surface: widget control #input', function()
         assert.is_false(F.is_widget_visible())
       end)
 
-    -- The live defect the move closes. Before it, disarming
-    -- meant show{force} — a full re-setup that clears the draft
-    -- (D-CFG-BOUNDARY, statement 4) — and nothing could read
-    -- the draft back to re-supply it, so changing your mind
-    -- cost the user's typing outright.
+    -- Without this, disarming would mean show{force} — a full
+    -- re-setup that clears the draft (D-CFG-BOUNDARY, statement
+    -- 4) — with no way to read it back and re-supply it, so
+    -- changing your mind would cost the user's typing outright.
     it('disarming at configure keeps the draft',
       function()
         local input = F.activate_project()
@@ -267,10 +267,7 @@ describe('input surface: widget control #input', function()
 
     -- A malformed cursor VALUE is refused the same way a bad
     -- KEY is: a framework message, not a raw arithmetic error
-    -- from inside the framework
-    -- (doc/development/technical_debt/input.md,
-    -- "T-CURSOR-SHAPE"). Every one of these shapes used to
-    -- crash the project.
+    -- from inside the framework.
     it('show raises on a malformed cursor', function()
       local input = F.compy_input()
       for _, bad in ipairs({
@@ -330,16 +327,13 @@ describe('input surface: widget control #input', function()
           F.widget:get_text())
       end)
 
-    -- force is ORTHOGONAL to the content (owner ruling,
-    -- 2026-09-09): it answers "may this show run over a widget
-    -- that is already shown", and nothing else. So a forced
-    -- show with no text leaves the draft exactly as a bare one
-    -- does -- text given changes the content, text omitted does
-    -- not (doc/development/decisions/input.md, D-CFG-BOUNDARY,
-    -- statement 1). This is the second reversal of this case:
-    -- it once pinned content surviving a bare forced show, then
-    -- pinned the clear, and the clear is what activation no
-    -- longer does.
+    -- force is ORTHOGONAL to the content (owner ruling): it
+    -- answers "may this show run over a widget that is already
+    -- shown", and nothing else. So a forced show with no text
+    -- leaves the draft exactly as a bare one does -- text given
+    -- changes the content, text omitted does not
+    -- (doc/development/decisions/input.md, D-CFG-BOUNDARY,
+    -- statement 1).
     it('force without text keeps the content',
       function()
         local input = F.compy_input()
@@ -358,10 +352,9 @@ describe('input surface: widget control #input', function()
       assert.equal('second?', F.widget.model:get_label())
     end)
 
-    -- The highlighter is the field that used to be DEFERRED to
-    -- the next activation rather than dropped, because it is
-    -- read off the evaluator and only the shared config path
-    -- writes there. It must land on this show, now.
+    -- The highlighter is read off the evaluator and only the
+    -- shared config path writes there, so a forced show must
+    -- land it now rather than deferring to the next activation.
     it('force applies the highlighter now, not at the ' ..
       'next activation', function()
       local input = F.activate_project()
@@ -421,8 +414,9 @@ describe('input surface: widget control #input', function()
       end)
 
     -- doc/development/internals/user_input.md,
-    -- "configure(config)": validator — the NEXT submit uses the
-    -- new fn, not the one set at show() (exercised, not just
+    -- "configure(config)": validator — the NEXT submit uses
+    -- the new fn, not the one set at show() (exercised, not
+    -- just
     -- read).
     it('swaps the live validator', function()
       local input = F.activate_project()
@@ -581,10 +575,7 @@ describe('input surface: widget control #input', function()
     -- hidden configure() writes them straight onto the widget,
     -- so they survive every later bare show() rather than
     -- being spent by the first (D-CFG-BOUNDARY, statement 3 —
-    -- set-if-given, persisting until replaced). This is a
-    -- change: the retained prompt used to be consumed by the
-    -- next show() and was one-shot in the store, even though
-    -- nothing then reset the label it had written.
+    -- set-if-given, persisting until replaced).
     it('a hidden-configured prompt survives later shows',
       function()
         local input = F.compy_input()
@@ -620,8 +611,8 @@ describe('input surface: widget control #input', function()
       end)
 
     -- doc/development/internals/user_input.md, "clear()": while
-    -- hidden is a no-op + warn — unlike configure(), this call
-    -- IS refused.
+    -- hidden is a no-op + warn — unlike configure(), this
+    -- call IS refused.
     it('while hidden warns and no-ops', function()
       local input = F.compy_input()
       local warned = 0
@@ -655,24 +646,14 @@ describe('input surface: widget control #input', function()
   -- unchanged. One case per channel: the pair differs only in
   -- which channel the event arrives on (textinput vs
   -- keypressed), so they are named for that and nothing else.
-  -- These ran on the CONSOLE route while it still had a widget
-  -- step, and were tagged #disputable because the second half
-  -- of each -- the console line receiving what the hidden
-  -- widget declined -- rested on a fallback nobody had ruled
-  -- on. That fallback is gone: the console route has no widget
-  -- step at all now (D-ROUTE-OWNS, "widget visibility is never
-  -- a routing condition"), which would leave these cases
-  -- passing for a reason unrelated to their claim -- a SHOWN
-  -- widget would satisfy them there just as well.  Re-sited on
-  -- the project route, where a hidden widget is a real
+  -- Sited on the project route, where a hidden widget is a real
   -- decision: the walk skips it and reports not-consumed. What
   -- discriminates hidden from shown is the WIDGET's own text,
   -- and the third case is the control that says so. The hook
   -- assertion is not a discriminator -- hooks run BEFORE the
   -- widget, so it fires either way; it proves the event reached
   -- the chain at all rather than being dropped upstream, which
-  -- would make an unchanged widget prove nothing. The dispute
-  -- is settled, not pinned, so the tag is gone.
+  -- would make an unchanged widget prove nothing.
   describe('a hidden widget is skipped', function()
 
     it('a typed character while hidden does not mutate it',
@@ -752,10 +733,11 @@ describe('input surface: widget control #input', function()
     end)
 
     -- always_shown() is a construction-time property of the
-    -- console and editor surfaces: they are host chrome, not a
-    -- transient widget, and no path should take them down.
-    -- Enforcing it is what makes the name true: the flag was a
-    -- convention any hide() call would have silently broken.
+    -- console and editor surfaces: they are permanent input
+    -- surfaces, not a transient widget, and no path should
+    -- hide them. Enforcing it is what makes the name
+    -- true: the flag was a convention any hide() call would
+    -- have silently broken.
     it('an always-shown widget refuses to hide', function()
       local m = UserInputModel(F.cfg, InputEvalText)
       local w = UserInputController(m, true):always_shown()
@@ -778,8 +760,9 @@ describe('input surface: widget control #input', function()
 
   -- doc/input_api.md, "Worked example: the trigger key
   -- echoes into the widget it showed".
-  -- LÖVE delivers a keypressed AND a textinput for one physical
-  -- key and guarantees nothing about their order, so the
+  -- LÖVE delivers a keypressed AND a textinput for one
+  -- physical key and guarantees nothing about their order,
+  -- so the
   -- trigger's own echo can land in the widget it just showed.
   -- The API's answer is a project idiom, not a mechanism: a
   -- one-shot shortcut on the textinput channel eats the echo
@@ -905,8 +888,9 @@ describe('input surface: widget control #input', function()
   end)
 
   -- Editor block navigation at the buffer limit lives in
-  -- tests/editor/editor_spec.lua ("with blocks:" → "navigation
-  -- at the block limit"): it is editor-INTERNAL behaviour
+  -- tests/editor/editor_spec.lua ("with blocks:" →
+  -- "navigation at the block limit"): it is editor-INTERNAL
+  -- behaviour
   -- driven below the gate, not a routing contract of the kind
   -- doc/development/decisions/input.md, D-ROUTE-OWNS, asserts.
   -- This suite asserts only that the keystrokes reach the

@@ -1,6 +1,7 @@
 -- Availability: introduced with the Compy input API
--- (1.0.0-rc20260712) — combo normalisation has no predecessor;
--- the shortcut behaviour it drives is asserted in
+-- (1.0.0-rc20260712) — combo normalisation has no
+-- predecessor; the shortcut behaviour it drives is
+-- asserted in
 -- input_shortcuts_click_spec.lua.
 
 -- Stub view.view before anything requires it: the real module
@@ -38,11 +39,10 @@ mock.mock_love({
 
 require('controller.controller')
 
--- (serialize-vs-match): proposal to replace per-keypress
--- combo_string serialisation with registration-time dispatcher
--- closures — same open item as
--- doc/development/technical_debt/input.md, "Combo-string
--- dispatch allocates a table per call".
+-- (serialize-vs-match): this pins that combo matching runs
+-- through per-keypress serialisation. A standing design
+-- alternative is to build registration-time dispatcher
+-- closures once instead of serialising on every event.
 describe('input surface: inbound events — combo serialisation'
   .. ' #input', function()
   local cs = Controller.combo_string

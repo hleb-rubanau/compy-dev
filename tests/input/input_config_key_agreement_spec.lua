@@ -8,16 +8,16 @@
 -- alone is taken by the surface and dropped by the widget with
 -- no raise and no warning. The contract itself is
 -- doc/development/decisions/input.md, D-CFG-BOUNDARY; the
--- reason this spec exists is the retired entry "The set of
--- accepted config keys has no single home" in
--- doc/development/technical_debt/input.md.
+-- reason this spec exists is that the accepted set has no
+-- single home — the two sides are declared in different
+-- modules and nothing reconciles them.
 --
 -- This spec is that reconciliation. It reads the REAL accepted
 -- set out of the surface rather than restating it, so a key
 -- added to one side and not the other fails here, by name.
 -- Deliberately not a refactor: unifying the lists would make
 -- one module import the other's across the surface/widget
--- boundary the architecture keeps apart (same entry).
+-- boundary the architecture keeps apart (D-CFG-BOUNDARY).
 
 local F = require('tests.helpers.input_fixture')
 

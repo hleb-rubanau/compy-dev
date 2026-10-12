@@ -77,7 +77,8 @@ describe("input model spec #input", function()
         model:handle(true)
         local _, c = model:get_cursor_pos()
         assert.is_true(c > 1)
-        assert.is_true(c <= string.ulen('x = "привет" +') + 1)
+        assert.is_true(
+          c <= string.ulen('x = "привет" +') + 1)
       end)
   end)
 
@@ -294,9 +295,6 @@ describe("input model spec #input", function()
   -------------------------------
   --  set_text keep_cursor     --
   -------------------------------
-  -- Model fix: set_text's tail
-  -- jump_end() used to run unconditionally, making a
-  -- truthy keep_cursor silently ineffective.
   -- doc/input_api.md, "Live changes": set_text(t) jumps
   -- to end; set_text(t, true) preserves the cursor,
   -- clamped if the new text is shorter than the old

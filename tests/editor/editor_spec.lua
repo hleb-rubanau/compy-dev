@@ -1704,7 +1704,8 @@ describe('Editor #editor', function()
           end
         end
 
-        it('types a query and Enter jumps to its definition', function()
+        it('types a query and Enter jumps to its definition',
+          function()
           local alpha = mock_func_snippet('alpha')
           local beta = mock_func_snippet('beta')
           session:open(src(alpha, '', beta), 3)
@@ -1718,7 +1719,8 @@ describe('Editor #editor', function()
           assert.is_true(controller.search.input:is_empty())
         end)
 
-        it('Escape leaves search without moving the selection', function()
+        it('Escape leaves search without moving the' ..
+          ' selection', function()
           local alpha = mock_func_snippet('alpha')
           local beta = mock_func_snippet('beta')
           session:open(src(alpha, '', beta), 3)
@@ -1854,7 +1856,8 @@ describe('Editor #editor', function()
         end)
 
         -- see issue #114
-        it ("extra emptyline+comment before single LOC", function()
+        it ("extra emptyline+comment before single LOC",
+          function()
           local emptyline = ''
           local comment = '-- comment'
           local single_loc = 'print("original line of code")'
@@ -2051,7 +2054,8 @@ describe('Editor #editor', function()
                        "saved file contains updates")
         end)
 
-        it('fourteen lines pass, fifteen are refused', function()
+        it('fourteen lines pass, fifteen are refused',
+          function()
           local ok14 = mock_func_snippet('ok14', 14)
           session:submit(ok14, true)
           assert.is_true(input:is_empty(), '14 lines accepted')

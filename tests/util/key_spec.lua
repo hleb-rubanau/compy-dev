@@ -12,7 +12,8 @@ describe('Key.any_pressed', function()
   mock.mock_love({})
 
   before_each(function()
-    for _, k in ipairs({ 'h', 'up', 'down', 'left', 'lshift', 'rshift' }) do
+    for _, k in ipairs({ 'h', 'up', 'down', 'left', 'lshift',
+      'rshift' }) do
       mock.unhold(k)
     end
   end)
@@ -23,7 +24,8 @@ describe('Key.any_pressed', function()
     assert.is_true(Key.any_pressed('h'))
   end)
 
-  it('is OR across its arguments, like the device call', function()
+  it('is OR across its arguments, like the device call',
+    function()
     mock.hold('down')
     assert.is_true(Key.any_pressed('up', 'down'))
     assert.is_false(Key.any_pressed('up', 'left'))

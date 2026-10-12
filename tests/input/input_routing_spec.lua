@@ -115,8 +115,8 @@ describe('input surface: inbound events — routing #input',
     -- observable on the editor side to assert.
     -- Mechanism-by-omission, the same shape as the wheel gap in
     -- input_nfr_mechanism_spec. What IS assertable, and is the
-    -- routing claim this grid cell exists for, is EXCLUSIVITY —
-    -- the release does not leak to the console
+    -- routing claim this grid cell exists for, is
+    -- EXCLUSIVITY — the release does not leak to the console
     -- (doc/development/decisions/input.md, D-ROUTE-OWNS;
     -- doc/development/internals/user_input.md, "Key release").
     it('a key release under editor does not reach the console',
@@ -133,8 +133,9 @@ describe('input surface: inbound events — routing #input',
     -- self.editor.input when app_state == 'editor') but the
     -- forward is CONFIG-GATED on cfg.editor.mouse_enabled,
     -- which production ships as FALSE (src/main.lua, the editor
-    -- config block). So the cell is not an untested behaviour —
-    -- it is a behaviour switched off by default. A test would
+    -- config block). So the cell is not an untested
+    -- behaviour — it is a behaviour switched off by
+    -- default. A test would
     -- have to flip the flag and would then assert something the
     -- shipped configuration never does; left pending
     -- deliberately, to be filled if/when editor mouse is

@@ -19,11 +19,6 @@
 -- is a project-facing contract — those live in the other
 -- input_*_spec.lua files, and a case that turns out to be one
 -- belongs there instead.
---
--- The file has been narrowed twice on that test. A wheel case
--- went to input_events_spec.lua when it became one case of
--- "every channel reaches the route"; a characterisation case
--- went entirely, having stopped discriminating.
 
 local F = require('tests.helpers.input_fixture')
 
@@ -42,8 +37,9 @@ describe('input contracts: NFR and mechanism guards #input',
   -- (doc/development/tests.md, "Input Contract Suite")
   -- ====================================================
   -- ====================================================
-  -- Mechanism / NFR guards — not behaviour contracts. Labelled
-  -- so no reader mistakes them for behaviour contracts. These
+  -- Mechanism / NFR guards — not behaviour contracts.
+  -- Labelled so no reader mistakes them for behaviour
+  -- contracts. These
   -- intentionally poke internals (identity, allocation), which
   -- is exactly what an NFR guard is for.
   -- (doc/development/tests.md, "Input Contract Suite")
@@ -83,9 +79,9 @@ describe('input contracts: NFR and mechanism guards #input',
       -- What compy.input keeps for a project — the callbacks
       -- store, and the project-owned config fields — lives ON
       -- the widget, and the surface RESOLVES it rather
-      -- than holding it (owner ruling 2026-07-20, re-made
-      -- 2026-08-27: compy.input.callbacks resolves to the
-      -- current widget's table). Identity is frozen against the
+      -- than holding it (owner ruling: compy.input.callbacks
+      -- resolves to the current widget's table). Identity is
+      -- frozen against the
       -- project (D-FROZEN-SHELL) and stable for as long as a
       -- project can observe it; it is not frozen against the
       -- framework replacing the widget underneath.
@@ -105,11 +101,9 @@ describe('input contracts: NFR and mechanism guards #input',
       -- into a store the surface holds, so a hidden configure
       -- lands on whichever widget is current at that moment,
       -- not on the one that existed when the surface was
-      -- built. (It used to witness this through a one-shot
-      -- pending config, which no longer exists -- configure
-      -- stopped stashing when text/cursor left its key set.
-      -- Pending config itself remains: a hidden configure
-      -- still holds project keys until a widget takes them.)
+      -- built. (Pending config itself remains: a hidden
+      -- configure still holds project keys until a widget
+      -- takes them.)
       it('a hidden configure resolves to the current widget',
         function()
           local input = F.compy_input()

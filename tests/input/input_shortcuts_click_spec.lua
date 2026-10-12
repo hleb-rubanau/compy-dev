@@ -12,7 +12,8 @@
 local F    = require('tests.helpers.input_fixture')
 local mock = require('tests.mock')
 
-describe('input surface: inbound events — shortcuts and clicks'
+describe('input surface: inbound events — shortcuts and'
+  .. ' clicks'
   .. ' #input', function()
   setup(function() F.setup() end)
   teardown(function() F.teardown() end)
@@ -23,7 +24,8 @@ describe('input surface: inbound events — shortcuts and clicks'
   -- "None of these consume the key: it still reaches the active
   -- route afterward"): a framework shortcut fires its effect
   -- and the key still reaches its route.
-  describe('global shortcuts do not consume the key (#disputable)',
+  describe('global shortcuts do not consume the key'
+    .. ' (#disputable)',
     function()
 
       it('a shortcut fires but does not consume', function()
@@ -47,7 +49,8 @@ describe('input surface: inbound events — shortcuts and clicks'
       -- chain"). The shared fixture is built in dev mode, so
       -- this test wires a private play-mode stub controller and
       -- saves/restores the shared love.handlers around it.
-      it('#play mode narrows the active shortcut set', function()
+      it('#play mode narrows the active shortcut set',
+        function()
           local calls = { }
           local stub = {
             cfg = { mode = 'play' },
@@ -73,8 +76,8 @@ describe('input surface: inbound events — shortcuts and clicks'
 
   -- Pointer shortcuts. A pointer event names no trigger key, so
   -- its combo is the held modifiers plus the wildcard: 'ctrl+*'
-  -- is a ctrl-click. Nothing else about the tier differs — same
-  -- table, same walk, same truthy-consumes rule.
+  -- is a ctrl-click. Nothing else about the tier differs —
+  -- same table, same walk, same truthy-consumes rule.
   describe('pointer shortcuts', function()
 
     it('a modifier combo fires and consumes', function()
@@ -115,7 +118,10 @@ describe('input surface: inbound events — shortcuts and clicks'
         local hits = { }
         local input = F.activate_project()
         input.shortcuts.mousepressed['mouse2'] =
-            function() hits[#hits + 1] = 'right'; return true end
+            function()
+              hits[#hits + 1] = 'right'
+              return true
+            end
         F.session.mousepressed(10, 10, 2, false, 1)
         assert.same({ 'right' }, hits)
       end)
@@ -161,7 +167,10 @@ describe('input surface: inbound events — shortcuts and clicks'
         local hits = { }
         local input = F.activate_project()
         input.shortcuts.mousemoved['ctrl+*'] =
-            function() hits[#hits + 1] = 'moved'; return true end
+            function()
+              hits[#hits + 1] = 'moved'
+              return true
+            end
         F.session.mousemoved(10, 10, 1, 1, false)
         assert.same({ }, hits)
         F.session.press('lctrl')
@@ -177,7 +186,10 @@ describe('input surface: inbound events — shortcuts and clicks'
         local seen
         local input = F.activate_project()
         input.shortcuts.mousepressed['ctrl+*'] =
-            function(x, y, btn) seen = { x, y, btn }; return true end
+            function(x, y, btn)
+              seen = { x, y, btn }
+              return true
+            end
         F.session.press('lctrl')
         F.session.mousepressed(10, 20, 2, false, 1)
         assert.same({ 10, 20, 2 }, seen)

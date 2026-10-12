@@ -1,11 +1,11 @@
--- Availability: introduced with the simple surface
--- (1.0.0-rc20260712, SIMPLE-01).
+-- Availability: introduced with the basic surface
+-- (1.0.0-rc20260712).
 
--- The SIMPLE surface: compy.ask / on_answer / on_key / unask
+-- The BASIC surface: compy.ask / on_answer / on_key / unask
 -- (doc/development/decisions/input.md, D-SIMPLE-SURFACE). It is
--- a wrapper over the same widget the precise API drives, so
+-- a wrapper over the same widget the advanced API drives, so
 -- every case here drives the real project route and asserts on
--- the widget the precise API would show.
+-- the widget the advanced API would show.
 
 local F = require('tests.helpers.input_fixture')
 
@@ -42,7 +42,7 @@ describe('input surface: the basic API #input', function()
 
     -- D-SIMPLE-SURFACE statement 5: a question concludes
     -- exactly once, through on_answer, and the answer is the
-    -- text -- the same string the precise API's callbacks get
+    -- text -- the same string the advanced API's callbacks get
     -- (D-ONE-PAYLOAD).
     it('a question delivers its text to on_answer', function()
       local compy = F.activate_simple()
@@ -98,10 +98,10 @@ describe('input surface: the basic API #input', function()
       assert.is_false(F.is_widget_visible())
     end)
 
-    -- SIMPLE-01-05, and the case that proves dispose-then-
-    -- notify landed: the uninstaller runs BEFORE on_answer, so
-    -- a follow-up question asked from inside it is not closed
-    -- by the flow that called it.
+    -- The case that proves dispose-then-notify landed: the
+    -- uninstaller runs BEFORE on_answer, so a follow-up
+    -- question asked from inside it is not closed by the flow
+    -- that called it.
     it('a re-ask from inside on_answer survives the flow',
       function()
         local compy = F.activate_simple()
@@ -140,7 +140,7 @@ describe('input surface: the basic API #input', function()
       end)
 
     -- The widget callbacks ask overwrites are its own
-    -- boilerplate, so a project's precise-API callback must
+    -- boilerplate, so a project's advanced-API callback must
     -- survive a question that borrowed the slot.
     it('an advanced on_text_entered survives a question',
       function()
@@ -161,7 +161,7 @@ describe('input surface: the basic API #input', function()
   end)
 
   describe('on_key', function()
-    -- SIMPLE-01-06, and the return value is the whole design:
+    -- The return value is the whole design:
     -- a key the program CLAIMS never reaches editing.
     it('a claimed key never reaches the widget', function()
       local compy = F.activate_simple()
@@ -187,7 +187,7 @@ describe('input surface: the basic API #input', function()
     end)
 
     -- With no on_key set at all, ask is transparent: the
-    -- widget behaves exactly as the precise API's show does.
+    -- widget behaves exactly as the advanced API's show does.
     it('an unset on_key leaves editing alone', function()
       local compy = F.activate_simple()
       compy.on_answer = function() end
@@ -251,7 +251,7 @@ describe('input surface: the basic API #input', function()
   describe('collisions and withdrawal', function()
     -- Owner ruling 2026-09-09: ask RAISES rather than
     -- chaining, because the project is the one that should
-    -- decide -- and nothing is blocked, since the precise API
+    -- decide -- and nothing is blocked, since the advanced API
     -- builds whatever it wants.
     it('ask raises when a keypressed hook is installed',
       function()

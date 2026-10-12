@@ -207,8 +207,7 @@ describe('input surface: inbound events — global platform'
 
       -- The one behaviour P-23-02 changes: the run-stop
       -- reservation becomes exact (only_mods), so Shift now
-      -- takes this combo out of it. Was 'still stops', like
-      -- ctrl+s above, before the move.
+      -- takes this combo out of it.
       it('ctrl+shift+s no longer stops the run; the'
         .. ' project binding runs instead', function()
           local project_ran = false
@@ -227,8 +226,8 @@ describe('input surface: inbound events — global platform'
       -- the ONLY thing that is: ctrl+shift+s leaves the editor,
       -- bare ctrl+s does nothing there. The upstream editor
       -- rework deleted our close and made leaving Shift+Esc,
-      -- and it holds the product authority on that key (owner,
-      -- 2026-09-04). It does NOT claim the key — its
+      -- and it holds the product authority on that key (owner
+      -- ruling). It does NOT claim the key — its
       -- checkpoint is Ctrl+K (technical_debt/input.md,
       -- T-CTRL-S-UNCLAIMED) — so what this pair
       -- pins is the exactness itself, which is the point of
@@ -341,9 +340,9 @@ describe('input surface: inbound events — global platform'
   -- own effect is already asserted live above (this file), and
   -- ctrl+pause's also in input_shortcuts_click_spec.lua — so
   -- listing them again as gaps would misstate coverage.
-  -- ctrl+t left the list on 2026-09-09 for that same reason,
-  -- once both its arms were covered: the running one above
-  -- ("still quickswitches while running"), the editor one in
+  -- ctrl+t is omitted for that same reason, both its arms
+  -- already covered: the running one above ("still
+  -- quickswitches while running"), the editor one in
   -- input_editor_keys_spec.lua ("Ctrl+T leaves and runs").
   -- reserved_quickswitch has no third arm.
   describe('reserved combos, own effect not yet asserted',

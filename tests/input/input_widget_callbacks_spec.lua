@@ -7,8 +7,8 @@
 -- highlighter / on_limit_reached
 -- boundary, and the submit/cancel call-order chains of
 -- D-EDIT-LIFECYCLE (doc/development/decisions/input.md). The
--- mechanics half — order, consume, fall-through, combo tables,
--- signatures — is input_events_spec.lua.
+-- mechanics half — order, consume, fall-through, combo
+-- tables, signatures — is input_events_spec.lua.
 
 local F    = require('tests.helpers.input_fixture')
 local mock = require('tests.mock')
@@ -19,8 +19,9 @@ local TU   = require('tests.testutil')
 -- through the same Controller.set_user_handlers path a run
 -- calls, and returns the project-facing compy.input surface.
 -- Assertions are on the widget's text and the project's own
--- callbacks — never a spy on an internal method, except the one
--- widget-signature case, which patches the shared widget and
+-- callbacks — never a spy on an internal method, except
+-- the one widget-signature case, which patches the shared
+-- widget and
 -- restores it.
 
 describe('input surface: widget callbacks #input', function()
@@ -124,8 +125,8 @@ describe('input surface: widget callbacks #input', function()
     -- unrelated later show()/configure() to flush it. It has
     -- ONE home (the widget's callbacks slot) and the evaluator
     -- resolves that slot rather than holding a copy
-    -- (doc/development/technical_debt/input.md,
-    -- "T-HL-TWO-HOMES").
+    -- (doc/development/internals/user_input.md,
+    -- "One home for the highlighter").
     it('a direct highlighter assignment is live',
       function()
         local input = F.activate_project()
@@ -273,7 +274,8 @@ describe('input surface: widget callbacks #input', function()
       function()
         local input = F.activate_project()
         local reached = { }
-        input.callbacks.before_submit = function() return true end
+        input.callbacks.before_submit =
+          function() return true end
         input.callbacks.validator = function()
           reached[#reached + 1] = 'validator'; return true
         end
@@ -298,7 +300,8 @@ describe('input surface: widget callbacks #input', function()
       function()
         local input = F.activate_project()
         local entered
-        input.callbacks.before_submit = function() return nil end
+        input.callbacks.before_submit =
+          function() return nil end
         input.show({
           text = 'abc',
           on_text_entered = function(t) entered = t end,
@@ -342,13 +345,11 @@ describe('input surface: widget callbacks #input', function()
           }, order)
       end)
 
-    -- The reverse of what this case pinned until 2026-09-09,
-    -- and the reversal is the point: the two submit callbacks
-    -- no longer differ by payload, they differ by WHEN they
-    -- run. Multi-line content, because a one-line widget hands
-    -- back 'a' and { 'a' } -- shapes so close that a payload
-    -- left as lines would still read as a string to a lax
-    -- assertion. Told apart by order, which the call-order
+    -- The two submit callbacks differ by WHEN they run, not by
+    -- payload. Multi-line content, because a one-line widget
+    -- hands back 'a' and { 'a' } -- shapes so close that a
+    -- payload left as lines would still read as a string to a
+    -- lax assertion. Told apart by order, which the call-order
     -- chain above pins.
     it('both submit callbacks receive the same string',
       function()
@@ -366,12 +367,11 @@ describe('input surface: widget callbacks #input', function()
         assert.equal('a\nb', seen.after)
       end)
 
-    -- The three guard callbacks received NO argument until
-    -- 2026-09-09, so a veto could not look at what it was
-    -- vetoing -- which is the reason the ruling gives for
-    -- handing them the draft. Asserted as a veto DECIDING on
-    -- its payload: a callback that is handed the draft and
-    -- ignores it would satisfy an equality check on its own.
+    -- A veto needs to see the draft to decide on it, which is
+    -- why the guard callbacks receive it. Asserted as a veto
+    -- DECIDING on its payload: a callback that is handed the
+    -- draft and ignores it would satisfy an equality check on
+    -- its own.
     it('before_submit vetoes on the draft it receives',
       function()
         local seen
@@ -438,10 +438,13 @@ describe('input surface: widget callbacks #input', function()
       function()
         local entered, after = false, false
         local input = F.activate_project()
-        input.callbacks.after_submit = function() after = true end
+        input.callbacks.after_submit =
+          function() after = true end
         input.show({
           text = 'bad',
-          validator = function() return false, { Error('nope') } end,
+          validator = function()
+            return false, { Error('nope') }
+          end,
           on_text_entered = function() entered = true end,
         })
         F.session.press('return')
@@ -480,7 +483,8 @@ describe('input surface: widget callbacks #input', function()
         assert.is_true(F.widget:has_error())
       end)
 
-      it('LuaSyntaxValidator accepts Lua lines unchanged', function()
+      it('LuaSyntaxValidator accepts Lua lines unchanged',
+        function()
         local seen
         local input = F.activate_project()
         input.show({
@@ -495,10 +499,11 @@ describe('input surface: widget callbacks #input', function()
 
   describe('cancel — the Escape chain', function()
     -- D-EDIT-LIFECYCLE: Escape runs the cancel call-order chain
-    -- (before_cancel → the flags → after_cancel). The PROJECT
-    -- widget seats NEITHER cancel cell, so the chain runs over
-    -- a widget it leaves standing and untouched — the callbacks
-    -- fire, the outcome is the project's to ask for
+    -- (before_cancel → the flags → after_cancel). The
+    -- PROJECT widget seats NEITHER cancel cell, so the chain
+    -- runs over a widget it leaves standing and untouched —
+    -- the callbacks fire, the outcome is the project's to
+    -- ask for
     -- (doc/development/decisions/input.md, D-LIFECYCLE-FLAGS,
     -- statement 3). after_cancel is still a no-op by default.
     it('Escape runs the cancel chain and destroys nothing',
@@ -623,8 +628,9 @@ describe('input surface: widget callbacks #input', function()
       assert.is_true(F.is_widget_visible())
     end)
 
-    -- The clear is model:cancel() — remember, THEN clear — so
-    -- the submitted line reaches the input history rather than
+    -- The clear is model:cancel() — remember, THEN clear —
+    -- so the submitted line reaches the input history rather
+    -- than
     -- being dropped (statement 4). It is not
     -- compy.input.clear(), which touches no history.
     it('the clear remembers before it empties', function()
@@ -794,8 +800,8 @@ describe('input surface: widget callbacks #input', function()
         assert.equal('again?', F.widget.model:get_label())
       end)
 
-    -- The raise edge, INVERTED and ruled (owner, 2026-09-07,
-    -- "let it be, documented"): the disposal has already run
+    -- The raise edge, INVERTED and ruled (owner ruling, "let it
+    -- be, documented"): the disposal has already run
     -- when the callback raises, so the widget is hidden where
     -- it used to be left standing. Asserted against the error
     -- channel, not against "no crash" -- the route boundary
@@ -866,8 +872,9 @@ describe('input surface: widget callbacks #input', function()
       end)
 
     -- D-EDIT-LIFECYCLE: Enter/Escape are ordinary chain
-    -- participants — a project shortcut on 'return' runs first
-    -- and consumes, so the widget's submit never fires (the
+    -- participants — a project shortcut on 'return' runs
+    -- first and consumes, so the widget's submit never fires
+    -- (the
     -- withdrawn non-overridable guarantee; the gateway power
     -- keys remain the unshadowable safety net, not this).
     it('a shortcut on return shadows the widget submit',
@@ -899,7 +906,8 @@ describe('input surface: widget callbacks #input', function()
     -- device as well as feeding the gateway, so the keystroke
     -- below adds nothing but the return key; it is kept as the
     -- combo driver rather than unpicked into two presses.
-    it('Shift+Return unconditionally adds a line without submitting',
+    it('Shift+Return unconditionally adds a line without' ..
+      ' submitting',
       function()
         F.activate_project()
         F.show_widget({ text = 'a' })
@@ -914,8 +922,9 @@ describe('input surface: widget callbacks #input', function()
     -- it: it is an ordinary combo, so a project shortcut on
     -- 'shift+return' consumes it like any other key and no
     -- newline is inserted (doc/development/decisions/input.md,
-    -- D-CHAIN-OF-3 — the route holds no unshadowable keys; the
-    -- gateway power keys are the only ones a project cannot
+    -- D-CHAIN-OF-3 — the route holds no unshadowable keys;
+    -- the gateway power keys are the only ones a project
+    -- cannot
     -- reach).
     it('a shortcut on shift+return intercepts the newline',
       function()
@@ -933,14 +942,16 @@ describe('input surface: widget callbacks #input', function()
   end)
 
   describe('hide() and force fire no cancel', function()
-    -- doc/development/decisions/input.md, D-EDIT-LIFECYCLE ("hide()
-    -- ... fires no cancel chain"): hide() and a force=true
+    -- doc/development/decisions/input.md, D-EDIT-LIFECYCLE
+    -- ("hide() ... fires no cancel chain"): hide() and a
+    -- force=true
     -- reconfigure fire no cancel chain (the user-facing dismiss
     -- is Escape only).
     it('hide() fires no cancel chain', function()
       local fired = false
       local input = F.activate_project()
-      input.callbacks.before_cancel = function() fired = true end
+      input.callbacks.before_cancel =
+        function() fired = true end
       input.show({ text = 'x' })
       input.hide()
       assert.is_false(fired)
@@ -950,7 +961,8 @@ describe('input surface: widget callbacks #input', function()
       function()
         local fired = false
         local input = F.activate_project()
-        input.callbacks.before_cancel = function() fired = true end
+        input.callbacks.before_cancel =
+          function() fired = true end
         input.show({ text = 'first' })
         input.show({ force = true, text = 'second' })
         assert.is_false(fired)
@@ -966,9 +978,7 @@ describe('input surface: widget callbacks #input', function()
     -- project widget clears on submit and stays shown, so a
     -- bare re-show over it is refused (D-CFG-BOUNDARY,
     -- statement 4) and the second Enter would meet an empty
-    -- widget. Until the flags landed, the surviving 'a' hid
-    -- that gap and the case passed without ever completing the
-    -- cycle its name describes.
+    -- widget.
     it('on_text_entered persists across a hide/re-show cycle',
       function()
         local hits = 0
@@ -1012,12 +1022,8 @@ describe('input surface: widget callbacks #input', function()
 
     -- Submit leaves the widget shown, so hiding it is the
     -- project's to do and after_submit is where it does it.
-    -- Asserted in that direction on purpose: the case that
-    -- asserted the OPPOSITE — re-show from after_submit, then
-    -- check the widget is shown — could not fail, because a
-    -- submit no longer hides and the assertion held whether or
-    -- not the callback ran at all. Proven by mutation: deleting
-    -- the callback assignment left the whole file green.
+    -- Proven by mutation: deleting the callback assignment left
+    -- the whole file green.
     it('after_submit is what hides the widget', function()
       local input = F.activate_project()
       local seen = { }
@@ -1055,7 +1061,8 @@ describe('input surface: widget callbacks #input', function()
         -- The idiom (D-EDIT-LIFECYCLE): the widget stays
         -- shown;
         -- the project clears between prompts from after_submit.
-        input.callbacks.after_submit = function() input.clear() end
+        input.callbacks.after_submit =
+          function() input.clear() end
         input.show({
           on_text_entered = function(t)
             seen[#seen + 1] = t
@@ -1086,7 +1093,8 @@ describe('input surface: widget callbacks #input', function()
     it('a prompt configured inside on_text_entered ' ..
       'survives the after_submit re-show', function()
       local input = F.activate_project()
-      input.callbacks.after_submit = function() input.show({}) end
+      input.callbacks.after_submit =
+        function() input.show({}) end
       input.show({
         prompt = 'first',
         on_text_entered = function()
@@ -1100,8 +1108,9 @@ describe('input surface: widget callbacks #input', function()
     end)
   end)
 
-  -- One lifecycle — `submit_flow` / `cancel_flow` — serves the
-  -- console line, the editor's input and the project's widget
+  -- One lifecycle — `submit_flow` / `cancel_flow` — serves
+  -- the console line, the editor's input and the project's
+  -- widget
   -- alike, and no instance reads the screen mode to decide what
   -- a key does (doc/development/decisions/input.md,
   -- D-EDIT-LIFECYCLE). A surface that needs to differ says so
@@ -1114,7 +1123,8 @@ describe('input surface: widget callbacks #input', function()
   -- Two narrow method patches stand where the seam IS the call:
   -- the console's evaluate_input count, and model:cancel not
   -- running under the editor's Escape.
-  describe('the same lifecycle on every route #lifecycle', function()
+  describe('the same lifecycle on every route #lifecycle',
+    function()
     -- A standalone widget, not the shared one — direct
     -- construction, like user_input_view_spec.lua.
     local function bare_uic()
@@ -1159,7 +1169,9 @@ describe('input surface: widget callbacks #input', function()
         local canceled = 0
         c:show({
           text = 'hello',
-          on_text_entered = function() submitted = submitted + 1 end,
+          on_text_entered = function()
+            submitted = submitted + 1
+          end,
         })
         c.callbacks.after_cancel = function()
           canceled = canceled + 1
@@ -1203,8 +1215,9 @@ describe('input surface: widget callbacks #input', function()
     -- bare Escape is claimed by nothing in navigation and
     -- reaches the widget, where it is an ordinary cancel.
     -- That is the chain behaving exactly as D-CHAIN-OF-3 says
-    -- it should — an unclaimed key falls through — but it is
-    -- ALSO a behaviour this branch did not choose, so it is
+    -- it should — an unclaimed key falls through — but it
+    -- is ALSO a behaviour this branch did not choose, so it
+    -- is
     -- registered: technical_debt/input.md, "Bare Escape in the
     -- editor's navigation mode now runs the widget's cancel".
     --
@@ -1215,8 +1228,7 @@ describe('input surface: widget callbacks #input', function()
     -- D-LIFECYCLE-FLAGS, statement 3). That satisfies
     -- D-EDITOR-KEYS row 2 — bare Escape does nothing in
     -- navigation and in editing — without the editor claiming
-    -- a key it does not want, and it is what pays
-    -- T-NO-CALLBACKS-IS-NOT-A-NOOP and T-NAV-ESCAPE.
+    -- a key it does not want.
     -- The case therefore asserts BOTH halves: the flow is
     -- reached (so the fall-through is still what D-CHAIN-OF-3
     -- describes) and the content is untouched. The editing
@@ -1280,8 +1292,8 @@ describe('input surface: widget callbacks #input', function()
 
     -- Same shape as Escape above: Enter (plain or with Ctrl)
     -- applies the edit to the buffer, and the editor consumes
-    -- it, so the submission is delivered once — to the editor —
-    -- and never a second time through the widget's
+    -- it, so the submission is delivered once — to the
+    -- editor — and never a second time through the widget's
     -- on_text_entered.
     describe('editor Enter submits to the editor alone',
       function()
