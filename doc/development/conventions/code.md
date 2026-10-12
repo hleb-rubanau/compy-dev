@@ -48,20 +48,21 @@ array = {
 | Rule | Limit |
 |---|---|
 | Line length | 64 characters (fits the Compy screen) |
-| Function length | 14 lines (16 tolerated — see below) |
+| Function length | 14 lines (platform code: 16 tolerated — see below) |
 | Parameters per function | 4 |
 | Nesting depth | 4 levels |
 
 When a limit is approached, redesign — don't raise the limit.
 
-**The one tolerance.** A function body may run to **16 lines** when the only
-alternative is extracting a helper whose sole job is to satisfy the limit. A
-helper that exists for the counter rather than the reader buys nothing — it adds
-a name, a call site and a doc-comment to save two lines. Before using the
-tolerance, check the cheaper fix first: comment boilerplate inside the body
-counts toward nothing and is usually where the overflow came from. (The case
-that produced this allowance needed neither — trimming the comments took the
-body to eight lines.)
+**The one tolerance — a suggestion, for internal platform code only, unless
+ruled or enforced otherwise.** It does not apply to projects or examples. A
+function body may run to **16 lines** when the only alternative is extracting a
+helper whose sole job is to satisfy the limit. A helper that exists for the
+counter rather than the reader buys nothing — it adds a name, a call site and a
+doc-comment to save two lines. Before using the tolerance, check the cheaper fix
+first: comment boilerplate inside the body counts toward nothing and is usually
+where the overflow came from. (The case that produced this allowance needed
+neither — trimming the comments took the body to eight lines.)
 
 ---
 
