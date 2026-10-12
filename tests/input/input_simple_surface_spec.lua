@@ -9,7 +9,7 @@
 
 local F = require('tests.helpers.input_fixture')
 
-describe('input surface: the simple API #input', function()
+describe('input surface: the basic API #input', function()
   setup(function() F.setup() end)
   teardown(function() F.teardown() end)
   before_each(function() F.reset() end)
@@ -142,7 +142,7 @@ describe('input surface: the simple API #input', function()
     -- The widget callbacks ask overwrites are its own
     -- boilerplate, so a project's precise-API callback must
     -- survive a question that borrowed the slot.
-    it('a precise on_text_entered survives a question',
+    it('an advanced on_text_entered survives a question',
       function()
         local compy = F.activate_simple()
         local input = F.compy_input()

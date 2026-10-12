@@ -1215,7 +1215,7 @@ local function build_simple_surface(input, get_env)
     if hk and hk ~= key_stub then
       error('compy.ask: compy.input.hooks.keypressed is'
         .. ' already set — a question installs its own;'
-        .. ' use the precise API (compy.input.show) instead',
+        .. ' use the advanced API (compy.input.show) instead',
         3)
     end
     local env = get_env()
@@ -1223,7 +1223,7 @@ local function build_simple_surface(input, get_env)
     if lv and lv.keypressed then
       error('compy.ask: this project defines love.keypressed —'
         .. ' a question installs its own key handler; use the'
-        .. ' precise API (compy.input.show) instead', 3)
+        .. ' advanced API (compy.input.show) instead', 3)
     end
   end
 
