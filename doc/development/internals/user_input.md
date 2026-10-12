@@ -410,7 +410,7 @@ of the normal lifecycle.
 `Controller.user_is_interactive()` is `love.state.user_input ~= nil or user_pointer` — the latter
 set when a project installs any pointer/click handler, and reset in `set_default_handlers`. It
 gates exactly one thing: `love.quit` treats `'project_open'` plus interactivity the same as
-`'running'`, so Ctrl+Esc stops the project back to the console instead of quitting the app. An idle
+`'running'`, so a quit stops the project back to the console instead of quitting the app. An idle
 console reached through `'project_open'`, with neither a widget nor a pointer hook, falls through
 and the app quits.
 
