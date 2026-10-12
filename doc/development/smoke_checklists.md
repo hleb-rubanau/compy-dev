@@ -1,3 +1,11 @@
+---
+description: Manual smoke checklists a human runs for the parts no automated suite can reach — the nested example repos and anything needing a real keypress
+status: active
+audience: developer
+authored: llm
+reviewed: none
+---
+
 # Manual smoke checklists
 
 Checklists a **human** runs, for the parts of this project no automated suite can reach: the nested
@@ -15,9 +23,9 @@ Sapper owed one too and ships from <https://github.com/dsent/compy.sapper>, outs
 repository.
 The remaining tracked examples ride the platform PR's review pass.
 
-**A fifth was added 2026-08-30: `turtle`.** It moved onto the widget's own hide at `FEAT-02`, so its widget
+**A fifth was added 2026-08-30: `turtle`.** It moved onto the widget's own hide then, so its widget
 lifecycle is now the framework's rather than its own — the class of change that earns a list — and
-it is the only in-tree consumer of the key. **It changed again on 2026-09-08** (`BUG-03-03`):
+it is the only in-tree consumer of the key. **It changed again on 2026-09-08:**
 its two keyboard channels moved from `love.keypressed`/`love.keyreleased` to
 `compy.input.hooks.*`, because a handler captured from `love.*` now consumes its channel and would
 have shielded turtle's own widget. Nothing a player does should differ — group C is the pass that
@@ -25,7 +33,7 @@ says so.
 
 **A sixth was added 2026-09-08: `sine`.** It owes a list for one row, and the row is the only
 behaviour this release changes for a user of the console: a project that draws once and returns
-leaves the prompt **typeable** again (`BUG-03-01`). No per-example list reached that behaviour,
+leaves the prompt **typeable** again. No per-example list reached that behaviour,
 because every example that owns a list either hooks a keyboard channel or shows a widget.
 
 **Run them in this order**, which is by *upstream sensitivity* — least exposed first, so that a
@@ -407,8 +415,8 @@ re-arm.
 ## turtle
 
 **In-repo** (`src/examples/turtle`), so it ships with the platform PR and has no separate remote.
-**Last mechanism change:** 2026-09-09, `FLAGS-01` — the key that hides the widget is now
-**`hide_on_submit = true`** on its single `show` (it was `auto_hide` from `FEAT-02`, 2026-08-30,
+**Last mechanism change:** 2026-09-09 — the key that hides the widget is now
+**`hide_on_submit = true`** on its single `show` (it was `auto_hide`, 2026-08-30,
 and a hand-written `after_submit = function() compy.input.hide() end` before that). What is left in
 `after_submit` is the `i` echo guard, which is re-armed for the next show. **One row's expectation
 changed with it — A6**: Escape now hides the widget and keeps what was typed.
@@ -487,11 +495,11 @@ idiom for a project whose hooks run above the widget.
 
 ### What a failure here means
 
-- **A2–A5, A7 and B2** are the 2026-08-30 change. A failure is a defect in `FEAT-02` or in the echo
+- **A2–A5, A7 and B2** are the 2026-08-30 change. A failure is a defect in that change or in the echo
   guard's new home — see the two commits named above.
 - **A3 specifically** distinguishes the mode from a one-off: if only the first submit closes, the
   flag is being cleared somewhere it should not be, and that is a **platform** defect, not turtle's.
-- **A6 changed on 2026-09-09** (`FLAGS-01`): Escape hides a project's widget and keeps the draft,
+- **A6 changed on 2026-09-09:** Escape hides a project's widget and keeps the draft,
   where it used to clear the line and leave the widget standing. The row is the one place a user
   meets that change, so confirm it reads acceptably as well as passing.
 - **C1–C4** are pre-existing behaviour the change was not supposed to touch.
@@ -501,7 +509,7 @@ idiom for a project whose hooks run above the widget.
 ## sine
 
 **In-repo** (`src/examples/sine`), so it ships with the platform PR. **Last mechanism change:**
-2026-09-08, `BUG-03-01` — the project route stopped consuming events nobody consumed, so an
+2026-09-08 — the project route stopped consuming events nobody consumed, so an
 unconsumed key goes back to the console.
 
 **What this list is for, and it is one thing.** `sine` is thirty lines of top-level drawing: no

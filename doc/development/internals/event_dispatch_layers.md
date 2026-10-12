@@ -165,5 +165,6 @@ already ended, and the repair declines to bring it back. **Measured over the shi
 narrowing has no member**: every example that takes over `love.draw` either hooks a keyboard channel
 or shows a widget that stays shown, and a shown widget consumes before the gate is consulted.
 
-The regression this pays, with the base comparison and the per-example measurement, is
-[`../technical_debt/input.md`](../technical_debt/input.md), `T-ROUTE-EATS-UNCONSUMED`.
+The regression this pays is one the branch introduced against the PR base and fixed before release:
+a project that consumed nothing used to leave the console below it deaf, where the base left it
+typeable per channel.

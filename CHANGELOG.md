@@ -7,8 +7,8 @@ newest first.
 
 ## CURRENT_SCOPE
 
-A new project input API: one widget with a simple wrapper (`compy.ask`) and a
-precise surface (`compy.input`), a lifecycle the project configures, first-class
+A new project input API: one widget with a basic wrapper (`compy.ask`) and an
+advanced surface (`compy.input`), a lifecycle the project configures, first-class
 keyboard/mouse/touch shortcuts, and the removal of the legacy polling globals.
 Project-author guide: `doc/input_api.md`.
 
@@ -18,12 +18,12 @@ Project-author guide: `doc/input_api.md`.
 
 ### Added
 
-- **A simple way to ask a question — `compy.ask`.** `compy.ask(prompt, …)` asks,
+- **The basic API — a quick way to ask a question — `compy.ask`.** `compy.ask(prompt, …)` asks,
   `compy.on_answer(text)` receives the answer (or `nil` on Escape),
   `compy.on_key(...)`'s return value decides who consumes a key, and `compy.unask()`
   withdraws the question. A wrapper over the same widget — no second widget or event
   path.
-- **The precise surface — `compy.input`:** `show`, `hide`, `configure`, `clear`,
+- **The advanced surface — `compy.input`:** `show`, `hide`, `configure`, `clear`,
   `set_text`, `set_cursor`, `get_text`, `get_cursor`, `is_shown`, plus callbacks,
   hooks, shortcuts and `fn`. One `show` and a callback (`on_text_entered`) replace the
   poll-a-global-every-frame idiom. Its lifecycle is set by **four independent flags** —
@@ -50,6 +50,9 @@ Project-author guide: `doc/input_api.md`.
 - **`singleclick` / `doubleclick` are repositioned** as input channels
   (`compy.input.hooks.singleclick` / `.doubleclick`, replacing the preceding
   `compy.singleclick` / `compy.doubleclick` for the uniformity). 
+- **The code editor opens with the first block selected, not the last.** Opening a
+  file (or following a `require`) now starts editing at the first block rather than
+  the last one.
 
 ### Removed
 

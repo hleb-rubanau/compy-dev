@@ -12,11 +12,11 @@ reviewed: none
 for text** and to **react to input events** — every event the device produces,
 not only the ones the widget cares about.
 
-**There is also a simple way in** — `compy.ask`, `compy.on_answer`,
+**There is also a basic way in** — `compy.ask`, `compy.on_answer`,
 `compy.on_key` and `compy.unask`, four names on `compy` itself for a program
 that just needs an answer. They drive the same widget this guide describes;
-see *"Two surfaces: simple and precise"* below. Everything under
-`compy.input` is what this guide calls the **precise** API, and it is three
+see *"Two surfaces: basic and advanced"* below. Everything under
+`compy.input` is what this guide calls the **advanced** API, and it is three
 surfaces:
 
 1. **The input widget** — put it on screen and change it while it is
@@ -74,7 +74,7 @@ sets, and which set a callback is in decides **where you may set it**. The four
 `on_limit_reached`, `validator`, `highlighter` — and they are settable both
 ways: in the config table of `show()` or `configure()`, or as fields on
 `compy.input.callbacks`. The four **lifecycle** callbacks are about the
-finalization around it — `before_submit`, `after_submit`, `before_cancel`,
+finalisation around it — `before_submit`, `after_submit`, `before_cancel`,
 `after_cancel` — and they are **assignment-only**: `compy.input.callbacks` is
 their home, and naming one in a config table raises and says so.
 
@@ -94,7 +94,7 @@ modifiers are optional (`'s'` is also a valid combo — bare, unmodified S), the
 come in a fixed order (ctrl, alt, shift — there are three), and left/right fold
 together, so `'Ctrl+Alt+S'` and `'ctrl+alt+s'` are the same binding.
 
-**Hook.** The primary, generic handler for an entire channel (`compy.input.hooks.<channel>`). A hook carries your project's main, generalized event processing logic (such as overall game controls, canvas drawing, or state transitions). There is at most one hook per channel. When your project defines `love.keypressed`, `love.mousepressed`, etc., those functions are automatically installed as hooks — so existing LÖVE code keeps working. A handler installed that way **consumes its channel**, exactly as it does under plain LÖVE, where assigning `love.keypressed` means owning the key; a hook you write into `compy.input.hooks` yourself follows the truthy convention instead. If your project shows the input widget, write the hook — see "How events reach your project".
+**Hook.** The primary, generic handler for an entire channel (`compy.input.hooks.<channel>`). A hook carries your project's main, generalised event processing logic (such as overall game controls, canvas drawing, or state transitions). There is at most one hook per channel. When your project defines `love.keypressed`, `love.mousepressed`, etc., those functions are automatically installed as hooks — so existing LÖVE code keeps working. A handler installed that way **consumes its channel**, exactly as it does under plain LÖVE, where assigning `love.keypressed` means owning the key. A hook you write into `compy.input.hooks` yourself follows the truthy convention instead. If your project shows the input widget, write the hook — see "How events reach your project".
 
 **Shortcut.** An optional guard function registered in front of the hook for a specific key or button combo (`compy.input.shortcuts.<channel>[combo]`). Shortcuts allow intercepting events early for specific combos — most often to process and stop event propagation (or just stop), and optionally to ride along without consuming (`fn.side_run`).
 
@@ -127,11 +127,11 @@ This is the entire event model: three consumers, tried in order, stop on the
 first truthy return. There is no bubbling, no capturing, no priority numbers.
 The rest of this guide is the detail of each surface.
 
-## Two surfaces: simple and precise
+## Two surfaces: basic and advanced
 
 There are two ways to ask the user for text, and they drive **the same widget**.
 
-**The simple API** is four names on `compy` itself. Use it when your program
+**The basic API** is four names on `compy` itself. Use it when your program
 just needs an answer:
 
 ```lua
@@ -142,16 +142,16 @@ end
 compy.ask("Your name?")
 ```
 
-**The precise API** is `compy.input.*` — everything else in this guide. Use it
+**The advanced API** is `compy.input.*` — everything else in this guide. Use it
 when you want the widget to stay, to decide what a submit or an Escape leaves
 behind, or to keep the question open while your program reacts.
 
 You do not have to choose once and for all: `ask` is a wrapper that writes the
-precise API's own fields for you and puts them back when the question ends. A
+advanced API's own fields for you and puts them back when the question ends. A
 reader who learns `ask` first and `show` later finds that the second contains
 the first.
 
-## Quick start — the simple API
+## Quick start — the basic API
 
 ```lua
 compy.on_answer = function(text)
@@ -190,14 +190,14 @@ signature is `on_key(key, scancode, isrepeat)`.
 **`compy.unask()`** takes a question back when your program changes its mind.
 It closes the question and restores everything, and it does **not** call
 `on_answer` — nobody answered. Use it rather than `compy.input.hide()`, which
-belongs to the precise API and leaves the question half-installed.
+belongs to the advanced API and leaves the question half-installed.
 
 One rule to know: `compy.ask` **raises** if your program already installs a
 `compy.input.hooks.keypressed` or a `love.keypressed`, because a question needs
 that channel. Nothing is lost — a program that wants both writes what it wants
-with the precise API instead.
+with the advanced API instead.
 
-## Quick start — the precise API
+## Quick start — the advanced API
 
 ```lua
 compy.input.show{
@@ -226,7 +226,7 @@ Everything that puts the widget on screen and alters it while it is there.
 | `prompt` | Label shown beside the text the user types. |
 | `text` | Initial content: a string or list of line strings — the two spellings mean the same thing. |
 | `cursor` | Initial `{line, col}` after `text` is applied. |
-| `highlighter` | `function(lines) -> coloring`; changes display only. |
+| `highlighter` | `function(lines) -> colouring`; changes display only. |
 | `validator` | `function(lines) -> true` or `false, Error[]`; gates submit. |
 | `on_text_entered` | `function(text)` called after successful validation, with the submitted content as one string. |
 | `on_limit_reached` | Called when cursor movement reaches a boundary. |
@@ -244,7 +244,7 @@ hides nor clears until you say so. Flags persist once set, until changed again o
 unset with `false`. You can set them via `compy.input.configure{...}` before or
 between shows, or pass them in a `show{...}` call — both change the flags and
 both persist. Set any of them to `false` to turn it off, and see *"Setting the
-lifecycle once"* below.
+lifecycle flags"* below.
 
 `show` on an active input widget warns and does nothing unless `force = true`.
 With `force`, it is a **full re-setup** — the same thing a first `show` does,
@@ -468,7 +468,7 @@ Enter submits; Shift+Enter inserts a newline. On a non-empty submission the
 order is:
 
 1. `before_submit(text)`, if assigned. A truthy return vetoes the
-   submit: steps 2-4 do not run and the text stays.
+   submit: steps 2–4 do not run and the text stays.
 2. `validator(lines)`, if assigned.
 3. `on_text_entered(text)`, if assigned.
 4. `after_submit(text)`, if assigned.
@@ -512,7 +512,7 @@ refuse to throw away.
 **By default Escape does nothing at all**: your widget is not hidden and your
 draft is not cleared, and `after_cancel` is where you decide what Escape should
 mean for your project. If you want an outcome, ask for it — see *"Setting the
-lifecycle once"* below.
+lifecycle flags"* below.
 
 ### Setting the lifecycle flags
 
@@ -542,7 +542,7 @@ compy.input.show{
 
 In both cases, `hide_on_submit = true` and `clear_on_submit = false` persist until changed again or set to `false`.
 
-Be explicit about Escape: nothing is seated on it by default (`hide_on_cancel = false`, `clear_on_cancel = false`), so a project that never sets Escape flags leaves Escape inert.
+**Be explicit about Escape, and prefer to keep the draft.** Nothing is seated on Escape by default (`hide_on_cancel = false`, `clear_on_cancel = false`), so a project that sets no Escape flags leaves it inert. That default is deliberate. **Clearing what the user typed when they press Escape is an easy data-loss trap** — Escape usually means *"get me back"*, not *"throw away my work"* — so the recommended approach is to leave the draft alone, and if you want Escape to dismiss at all, reach for `hide_on_cancel = true` (which keeps the text) rather than `clear_on_cancel = true`. The framework takes no side here: it starts every flag at a no-op and hands you all four, so the policy is yours — this is a recommended UX, not a rule the framework enforces.
 
 ### Asking one question — `hide_on_submit`
 
@@ -583,7 +583,7 @@ shapes. The helpers are globals in the project environment:
 
 | Helper | Use |
 |---|---|
-| `LuaHighlighter(lines)` | Lua syntax coloring for the input widget. |
+| `LuaHighlighter(lines)` | Lua syntax colouring for the input widget. |
 | `LuaSyntaxValidator(lines)` | Accepts valid Lua or returns positioned parse errors. |
 | `LineValidators(filters)` | Adapts one filter or a list of line filters into a validator. |
 
@@ -703,7 +703,7 @@ Placing shortcuts and hooks *above* the widget gives your project full control t
 
 ### Event hooks and shortcuts — when to use which
 
-- **Hooks (`compy.input.hooks.<channel>`)** are your project's **generic event handlers**. Use a hook for complex, generalized event processing across an entire channel (such as character movement, drawing on canvas, or general game state handling). There is at most one hook per channel.
+- **Hooks (`compy.input.hooks.<channel>`)** are your project's **generic event handlers**. Use a hook for complex, generalised event processing across an entire channel (such as character movement, drawing on canvas, or general game state handling). There is at most one hook per channel.
 - **Shortcuts (`compy.input.shortcuts.<channel>[combo]`)** are **optional early guards** configured in front of the hook. Use a shortcut for clearly detectable, combo-specific alternative interceptions earlier in the dispatch walk — most often to process and stop propagation (or just stop), and optionally to ride along without consuming (`fn.side_run`).
 - **A captured `love.*` handler** is the third way in, and it is the one to avoid when a widget is involved. It reaches the same hook slot, but it **consumes its channel unconditionally** — see "How events reach your project" — so nothing below it runs.
 
@@ -1142,72 +1142,6 @@ The old evaluator globals — `InputEvalText`, `InputEvalLua`,
 used to be visible there by accident, never as API; they are withheld now. Use
 `LuaHighlighter`, `LuaSyntaxValidator` and `LineValidators`, which are exported
 and go in the `highlighter` and `validator` keys.
-
-## Proposed updates/changes
-
-> [!NOTE]
-> All proposals below have been evaluated and incorporated into the shipping API (or resolved with ratified decisions). This section is retained for proposal tracking and historical context until final PR assembly (`PR-01-06`).
-
-### @dsent DevX amendments
-
-Rationale comes from the usage survey of upstream's examples, the IDE's console and editor, and our games (`maze`, `balloons`, `sapper`). Synchronous input is a separate product proposal: `sync-input-proposal.md`.
-
-#### 1. Add `compy.input.get_text()` **(Status: BUILT)**
-
-- Change: export the widget's content getter, returning a string; works while hidden.
-- Why: `love.draw` has no event to consult, and the 64-character cap needs the length while typing. With item 2 the callbacks see the draft as their argument; the getter covers everything outside them.
-
-remark: de-facto implemented (see above), exported as `compy.input.get_text()`.
-
-#### 2. One payload shape: the string **(Status: BUILT)**
-
-- Change: every callback that can see content receives the same string. `on_text_entered(text)`, `after_submit(text)`, `before_submit(text)`, `before_cancel(text)`, `after_cancel(text)`. `validator(lines)` and `highlighter(lines)` keep lines.
-- Why: every program-facing consumer wants a string; only positional plumbing wants lines. Today two callbacks are told apart by payload shape, and `lines[1]` on a string fails silently. A callback that ignores the argument loses nothing, and a veto can look at the draft.
-
-remark: built (`D-ONE-PAYLOAD`), all five content callbacks receive the unified string.
-
-#### 3. Submit clears the field by default **(Status: BUILT)**
-
-- Change: after a successful submit the field is empty. `auto_clear = false`, a persistent key like `auto_hide`, keeps the text.
-- Why: five of seven real prompts clear after submit and each writes the same `after_submit`. The two that keep text, `tixy` and the maze, already hold it themselves.
-
-remark: built (`D-LIFECYCLE-FLAGS`), `clear_on_submit = true` by default.
-
-#### 4. Escape hides, and does not clear **(Status: RESOLVED)**
-
-- Change: cancel takes the widget down and leaves the content. `before_cancel` veto and `after_cancel` stay. The always-shown console and editor widgets keep their own Escape.
-- Why: Escape is "get back from whatever is active". Clearing on Escape is the P1 data-loss hazard, reachable from the right mouse button.
-
-remark: resolved on least-destructive basis (`D-LIFECYCLE-FLAGS` statement 3) — Escape is opt-in, defaulting to no-op (`hide_on_cancel = false`, `clear_on_cancel = false`).
-
-#### 5. `show{...}` is a new question; `show()` brings the field back **(Status: BUILT)**
-
-- Change: a `show` with a table starts from its `text` or empty. A bare `show()` re-shows the field as it was left. Settings persist as today.
-- Why: unrelated prompts in one program must not inherit a stale draft; a re-show after `auto_hide` must. The distinction needs no new verb.
-
-remark: built — `show{text=...}` applies given text or `text=''` empty; bare `show()` preserves content.
-
-remarks from discussion:
-- soft objections: semantically inobvious behaviour difference (show() vs show({}) would be hard to comprehend; its not clear whether case frequency justifies optimizing API for it)
-- alternative: bind auto-clear on hide, and see if `(auto_clear x auto_hide)` covers required scenarios and if better names for these flags could be figured out
-- alternative 2, currently suggested by docs: `get_text` before hide + save and reset content in external variable
-
-### @nagydani - simplified minimalistic set **(Status: BUILT)**
-
-Here's how I see the desired input API. It is asynchronous, but extremely simple, with one function and two callbacks:
-
-One callback, something like compy.input(text) is called when text is entered (i.e. Enter pressed), with the argument containing the actual text.
-The other callback, something like compy.inputControl(key) is called when some control key is pressed, when editing.
-The function is something like compy.ask(prompt, highlighter, initialText, cursorPosition) where prompt defaults to "text", highlighter defaults to everything being black (highlighters for Lua syntax, numbers, etc. should be provided), initialText defaults to empty string, cursorPosition defaults to 0.
-
-When any of the callbacks are called, the input is removed from the screen. If editing should be continued for whatever reason, compy.ask should be called again from that callback.
-
-#### resolution
-
-In the live discussion it was agreed to expose current (aka 'low-level' API) and suggested simple surface altogether under same compy.input namespace. Projects can use what they need. 
-Details to be figured out.
-
-remark: built as simple surface (`D-SIMPLE-SURFACE`) — `compy.ask`, `compy.on_answer`, `compy.on_key`, `compy.unask`.
 
 ## See also
 

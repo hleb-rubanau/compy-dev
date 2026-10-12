@@ -72,8 +72,8 @@ The previous input API had three structural faults that projects tripped over:
   `love.keypressed` / `love.textinput` handlers were not called at all — routing was gated on
   widget presence, so a shown widget swallowed the project's key events wholesale. Reacting to
   a hotkey *while* soliciting text was impossible.
-- **No show/hide without teardown.** The widget could not be hidden and brought back at all:
-  dismissing it meant tearing it down, and asking again meant building a new one.
+- **No show/hide — dismissing destroyed the widget.** The widget could not be hidden and brought
+  back at all: dismissing it destroyed it, and asking again meant building a new one.
 
 The design goal was an event-driven input surface consistent with LÖVE's own callback style,
 expressive enough that the console REPL and the editor input strip *could* be rebuilt on it,
@@ -118,7 +118,7 @@ components, in order:
    per-event keying and canonical-combo normalisation apply unchanged).
 2. **`hooks[event]`** — one per-event hook, absorbing both the old per-event generic
    callback and the legacy project `love.*` handler seeding path into one hook (D-HOOKS-SEEDED).
-   **The one named exception to truthy-consume lives here** (2026-09-08): a hook *seeded* from a
+   **The one named exception to truthy-consume lives here:** a hook *seeded* from a
    project's own `love.*` handler consumes unconditionally, because its author wrote it under LÖVE's
    convention and never chose a return value. A hook the project registered itself follows the rule
    above. See D-HOOKS-SEEDED, *"a seeded handler consumes"*.
@@ -177,16 +177,14 @@ widget's behalf; the widget's own return is discarded and means nothing to the c
 *(The widget also carries an internal `if not self.shown then …` no-op, which mutates nothing and
 only debug-logs. It is **not** what the chain reads — but it is load-bearing on the **console**
 route, which calls `input:keypressed(k)` unconditionally rather than through this chain. Both
-checks exist, they answer to different callers, and the earlier claim that only the internal one
-existed was wrong about this route.)*
+checks exist, and they answer to different callers.)*
 
 **The chain's own return is defined and returned even though nothing reads it today.** The gateway
 calls the route occupant and discards the answer. It is kept because a walk that reports whether it
 consumed is a **coherent interface**, and because it leaves input chains stackable or nestable if
-that is ever wanted — **at exactly zero cost**. To be explicit, since the strategic frame asks:
-this is **not** generic machinery built for a speculative need. Nothing is abstracted, no hook is
-added, no shape is generalised. A boolean that already had to be computed is returned instead of
-dropped.
+that is ever wanted — **at exactly zero cost**. This is **not** generic machinery built for a
+speculative need: nothing is abstracted, no hook is added, no shape is generalised. A boolean that
+already had to be computed is returned instead of dropped.
 
 Widget visibility still carries **no routing weight** (D-ROUTE-OWNS): what `is_shown()` selects is
 whether the last component of an already-chosen route's chain participates, never which route the
@@ -201,17 +199,17 @@ widget's own test is `is_shown()`.
 
 ## D-WIDGET-AT-BOOT — a boot-provisioned widget per surface, not per-session construction
 
-**AMENDED IN PART, 2026-08-27.** The **project** widget is created per project **run**, not at
+**AMENDED IN PART.** The **project** widget is created per project **run**, not at
 load. Everything else stands: the console's, the editor's and the search strip's widgets are still
 boot-provisioned, and within a run `show()`/`hide()` are still state flips on one instance, never
 construction and teardown. The NFR below is not withdrawn — it is applied at the boundary it
 actually names.
 
-**AMENDED, 2026-09-09 — the three host surfaces refuse to hide, and that refusal is ratified
+**AMENDED — the three host surfaces refuse to hide, and that refusal is ratified
 here.** `UserInputController:always_shown()` marks the console line and the editor's input and
 search strips at construction. It does two things: `shown = true`, which those surfaces need
 because they start visible without a `show()` call, and `always = true`, which makes `hide()`
-return without effect. **The owner ruled the guarantee KEPT**, reversing the 2026-09-06 ruling that
+return without effect. **The owner ruled the guarantee KEPT**, reversing an earlier ruling that
 would have deleted it: *"we keep `always_shown` guarantee exactly because pre-feature there was no
 chance that persistent widgets will receive stray `hide()` (or any `hide()`) … and now we need
 explicit guard in persistent widgets that blocks hiding."*
@@ -224,7 +222,7 @@ code. **That the guard refuses nobody today is the point rather than an objectio
 what keeps that route from opening, and a flag anything may clear is a convention, not the
 guarantee the name claims.
 
-**Walked 2026-09-09, so the guarantee is a fact about the tree and not about one file.** `hide()`
+**Verified across the codebase, so the guarantee is a fact about the tree and not about one file.** `hide()`
 is the only writer of `shown = false` (`grep -n "shown *=" src/controller/*.lua`), and the two
 sites that clear `love.state.user_input` without it — the shutdown path in `controller.lua` and
 `consoleController.lua`'s `hide_input_widget` fallback, which runs only when there is no project
@@ -245,17 +243,16 @@ session** — the device is memory-constrained and the common pattern is repeate
 Repeated prompting happens *within* a run, so a per-run widget satisfies that requirement in full:
 a project that prompts a hundred times allocates once. The requirement was previously applied one
 boundary wider than it states, and that wider boundary was never examined. A shared-within-the-run
-instance also gives hiding the widget without tearing it down, and showing it again — for nothing: the widget and
+instance also gives hiding the widget and showing it again — for nothing: the widget and
 everything the project set on it are not destroyed while the project that owns it is alive, and it
 is what makes D-ROUTE-OWNS cheap.
 
-**What comes back is the widget, the project's settings — and, since 2026-09-07, the user's text
-too.** `hide()` has always preserved the content: it flips `shown` and clears
-`love.state.user_input`, nothing more. What used to discard it was the **next `show()`**, and
-D-CFG-BOUNDARY statement 1 no longer does that — activation carries no implicit destruction, so a
-bare `show()` after a `hide()` reopens on what was there. The case that pinned the old rule
-(*"a fresh activation with no text is empty"*) migrated with the amendment on 2026-09-09 and is
-now *"a bare re-activation keeps the content"*. **The paragraph's own
+**What comes back is the widget, the project's settings, and the user's text.** `hide()` has
+always preserved the content: it flips `shown` and clears `love.state.user_input`, nothing more.
+What used to discard it was the **next `show()`**, and D-CFG-BOUNDARY statement 1 no longer does
+that — activation carries no implicit destruction, so a bare `show()` after a `hide()` reopens on
+what was there. The case that pinned the old rule (*"a fresh activation with no text is empty"*)
+migrated with the amendment and is now *"a bare re-activation keeps the content"*. **The paragraph's own
 point is unchanged and is the reason it is kept:** this decision buys hiding *without removing*,
 which is about **teardown** — it was never a promise about the user's text either way, and it is not
 one now.
@@ -308,8 +305,8 @@ code editor of `internals/editor.md` — the two meet in this file, where `edito
 a fixed set of four callbacks:
 
 - `on_text_entered(lines)` — fires at submit, with assembled line strings. **Amended twice: by
-  D-PAYLOAD-SPLIT (2026-08-30), which made this payload the joined string and gave `after_submit`
-  the line list; then by D-ONE-PAYLOAD (2026-09-09), which retired that split — `after_submit`
+  D-PAYLOAD-SPLIT, which made this payload the joined string and gave `after_submit`
+  the line list; then by D-ONE-PAYLOAD, which retired that split — `after_submit`
   receives the same string, and the three guard callbacks receive it too.**
 - `on_limit_reached(direction, scope)` — fires when the cursor tries to move past a boundary
   (`direction` up/down/left/right; `scope` whole-input or current-line).
@@ -368,7 +365,7 @@ submit_flow:  before_submit() → validator → [flags] → on_text_entered → 
 cancel_flow:  before_cancel() →             [flags] →                   after_cancel()
 ```
 
-*(`[flags]` is D-LIFECYCLE-FLAGS' per-instance clear and hide, implemented 2026-09-09. Until then
+*(`[flags]` is D-LIFECYCLE-FLAGS' per-instance clear and hide, implemented. Until then
 cancel's clear was **hardwired** at that position, which is why an unconfigured widget was not
 inert; the flags are what made this entry's own "stay open unless asked" true of every instance.)*
 
@@ -388,12 +385,11 @@ Three substantive changes, and they are what this entry is for:
 
 - **Either `before_` callback may veto, and a veto skips the WHOLE flow** — both flags and the
   trailing `after_` with them, not only the step in the middle. That is what the code has always
-  done (`cancel_flow` returns on a truthy `before_cancel`); the earlier wording here, *"skips the
-  step it guards"*, read as though `after_cancel` still ran, and it never did.
+  done (`cancel_flow` returns on a truthy `before_cancel`).
 - **Auto-close defaults to OFF.** `after_submit`/`after_cancel` are no-ops, so the widget stays
   open unless a project asks otherwise. The old one-shot mechanism is not restored by a keep-open
   flag with its polarity flipped; **a project that wants "ask once, then hide" sets
-  `hide_on_submit`** (D-LIFECYCLE-FLAGS, implemented 2026-09-09), which is that request written as
+  `hide_on_submit`** (D-LIFECYCLE-FLAGS, implemented), which is that request written as
   a mode rather than as a hook kept for its side effect.
 - **Enter and Escape are shadowable.** A project shortcut on `'return'` or `'escape'` wins over
   the widget's default, like any other combo.
@@ -414,9 +410,7 @@ what does reach its widget does nothing**; the console seats `clear_on_cancel` a
 its Escape clears and its submit is the console's own evaluation path; and the project widget seats
 the two the release ships. Per-instance capability flags (`disable_selection`,
 `allow_duplicate_line`) work the same way — the owner enables them at construction; the widget never
-reads a mode. *(This paragraph read "the console sets no lifecycle callbacks so its flows are
-no-ops" until 2026-09-09. It was false while the clear was hardwired, and it is still not what the
-console is: it sets no callbacks and does seat a flag.)* Branching inside the widget instead would leave a
+reads a mode. Branching inside the widget instead would leave a
 reusable component that cannot be reasoned about, or migrated, without knowing it is "the editor",
 which is the leak a framework tier was covering for in the first place.
 
@@ -448,9 +442,9 @@ sub-table-identity write, permit every leaf. The guard lives in the surface's me
 down per sub-table, so a mistyped assignment fails at the point of the mistake rather than
 corrupting the API — loudly, never a silent swallow.
 
-> **Amended in place, 2026-08-27 (ARC-01).** "Frozen identity" binds the **project**, not the
+> **Amended in place.** "Frozen identity" binds the **project**, not the
 > framework. `compy.input.callbacks` **resolves to** the current widget's `callbacks` table
-> (owner ruling 2026-07-20, re-made 2026-08-27), and the widget lives for one project run
+> (owner ruling, re-made once), and the widget lives for one project run
 > (D-WIDGET-AT-BOOT, as amended) — so the identity is constant for the whole of the only lifetime a
 > project has, and a project cannot observe the resolution. `shortcuts` and `hooks` are the
 > surface's own tables and are unchanged. **The decision is unchanged:** the container and all
@@ -490,7 +484,7 @@ The folded form is the **only** representation a consumer meets: modifier state 
 device at match time (D-ASK-THE-DEVICE), and the left/right key names survive nowhere but inside
 the fold table that produces the generic name (`util/key.lua`, `mod_triples`).
 
-> **Amended by D-THREE-MODS, 2026-08-10.** `gui` is withdrawn from the modifier set: the
+> **Amended by D-THREE-MODS.** `gui` is withdrawn from the modifier set: the
 > precedence order is `ctrl`, `alt`, `shift`. The serialisation rule itself — fold left/right,
 > fixed precedence, `+`-joined, trigger last — is unchanged; only the membership of the list
 > moves.
@@ -499,7 +493,7 @@ the fold table that produces the generic name (`util/key.lua`, `mod_triples`).
 through an overloadable matcher (default exact match), left as a marked seam for future
 glob/prefix needs.
 
-> **Canonical form is lower-case. Clarified 2026-08-31 (owner) — assumed from the start, and
+> **Canonical form is lower-case. Clarified (owner) — assumed from the start, and
 > written down only because leaving it unwritten cost a defect.** Case folding is part of the
 > canonical form on the same footing as folding left/right and ordering the modifiers, so
 > `'Ctrl+S'`, `'ctrl+S'` and `'ctrl+s'` are one binding. It went unstated because it is the
@@ -545,9 +539,8 @@ that installs a `love.*` handler instead is **re-wired there silently**. A proje
 for **any** bindable channel — the keyboard trio, the seven pointer channels, and the two derived
 click events alike — auto-provisions into `hooks[event]` (D-CHAIN-OF-3's second chain component),
 where it is a chain participant **with one difference from a hook the project wrote itself: it
-consumes its channel** (the 2026-09-08 amendment below, and the named exception to D-CHAIN-OF-3).
-*(This sentence read "where it is an ordinary chain participant" until that amendment, which is
-what "ordinary" no longer is.)* `hooks[event]` is a single table and the single
+consumes its channel** (the amendment below, and the named exception to D-CHAIN-OF-3).
+`hooks[event]` is a single table and the single
 source of truth: at project activation, any event for which the project has not already set an
 explicit hook gets seeded once with its captured project handler (if any); after that moment the
 table **is** the whole story — nil-ing a hook clears it, full stop, with no fallback
@@ -560,17 +553,17 @@ expected.** What the seam adds is one thing: the return value — which LÖVE ig
 handler had a convention for — now means *consume* in hook position (D-CHAIN-OF-3;
 `projectInputController.lua`, `dispatch`) **for a hook the project registered itself**. A project
 author who registers combos has already met that convention; one who only ever wrote
-`love.keypressed` has not, and returns nothing anyway — **which is why, since 2026-09-08, a captured
-handler consumes rather than having its incidental return read**. See the amendment below.
+`love.keypressed` has not, and returns nothing anyway — **which is why a captured
+handler now consumes rather than having its incidental return read**. See the amendment below.
 
-**AMENDED 2026-09-08 — a seeded handler consumes.** A captured `love.*` handler is seeded wrapped,
+**AMENDED — a seeded handler consumes.** A captured `love.*` handler is seeded wrapped,
 so it stops the walk whether it returns anything or not; a hook written into `compy.input.hooks`
 keeps the truthy convention above. The owner's terms: *"we can restore parity by wrapping legacy
 `love.` hook into fn.stop_here — which would match the project expectation that occupying what it
 thinks is the whole channel leaves no silent receivers. if dev installs a hook into
 `compy.input.hooks` they are presumed to know the fallthrough-by-return convention … it guarantees
 exact compatibility with love conventions."* This is **the named exception to D-CHAIN-OF-3**, and it
-is what makes the console fall-through (`T-ROUTE-EATS-UNCONSUMED`) exact base parity per channel
+is what makes the console fall-through exact base parity per channel
 rather than a repair that lets a handler's incidental return decide who else hears the event: at the
 PR base, a project defining `love.keypressed` displaced the console's outright.
 
@@ -582,8 +575,8 @@ requires precise machinery. Decision to use love. hooks in it was purely for ill
 and now it does not fit … Programs using legacy love. hooks were not aware of widget anyway."*
 `doc/input_api.md` states the rule and the practical consequence for a project author.
 
-**~~The seam is dirty, tolerable, and easily removable — the position of record~~** (owner,
-2026-09-05; **superseded 2026-09-08 by the amendment above, and kept for its reasoning**).
+**~~The seam is dirty, tolerable, and easily removable — the position of record~~** (owner;
+**superseded by the amendment above, and kept for its reasoning**).
 Imitating the old effect *exactly* would mean seeding each captured handler wrapped in
 `fn.stop_here`, so it consumes the way it did when it was the end of the line (D-STOP-AND-SIDE).
 **That is what a released platform would owe its users, and this one is not released**: there is no
@@ -604,8 +597,8 @@ disabling the old: `compy.input.hooks.keypressed = f` is the encouraged form (th
 *Vocabulary*, *"where that trips people up"*), and **which of the two is primary is revisable
 later** without invalidating anything written against either.
 
-**What makes `compy.input.hooks` the more appropriate place is separation, not taste** (owner,
-2026-09-05). Everything a project installs sits on one surface that the project owns, so the whole
+**What makes `compy.input.hooks` the more appropriate place is separation, not taste** (owner).
+Everything a project installs sits on one surface that the project owns, so the whole
 of it can be **detached from dispatch and reattached as a unit** — which is what any future
 reconsideration of project sandboxing would need, and which assignments scattered across `love.*`
 cannot offer however faithfully they are captured. The legacy spelling reaches the same table; what
@@ -615,7 +608,7 @@ it does not do is constitute a surface.
 **once, at activation**, and never re-consulted: `hooks[event]` is thereafter the whole story,
 so nil-ing a hook clears it with no fallback and no resurrection.
 
-**Why a seeded handler is a chain participant** *(and, since 2026-09-08, one with its own consume
+**Why a seeded handler is a chain participant** *(and now one with its own consume
 rule — the clause "they consume on truthy, fall through on falsey" below is superseded by the
 amendment above; the rest of the paragraph is why the hook TIER is where a captured handler lands at
 all, which is unchanged)*. Treating project handlers as chain participants keeps the model uniform (they consume on
@@ -626,14 +619,14 @@ reintroduce the exact special-case the subsystem exists to remove. "One table, o
 a strictly more predictable contract than a precedence rule invisible from the table's own
 contents — a project (or a debugger) inspecting `hooks.keypressed` could not otherwise tell
 whether a handler was silently active underneath a `nil`. The resurrection-on-nil behaviour was
-never asked for; it was an artifact of two separate storage locations being resolved late.
+never asked for.
 
 **Consequence, accepted.** Because project handlers fire while the widget is shown, the two examples that
 combined a project handler with widget solicitation changed behaviour and were migrated alongside
 the change. Breaking-and-fixing the affected examples was the explicit expectation, not a
 regression to avoid; handler-only projects (no widget) are unaffected.
 
-**Consequence, restated after the 2026-09-08 amendment.** A seeded handler now fires while the
+**Consequence, restated after the amendment.** A seeded handler now fires while the
 widget is shown **and consumes**, so the widget below it receives nothing. The class this affects is
 the same one named above — a project that combines a captured `love.*` handler with widget
 solicitation — and the remedy is the same shape: the example migrates. `turtle` did, to
@@ -644,8 +637,7 @@ construction (`consoleController.lua`, `build_input_widget`: `UserInputControlle
 three were migrated, `tixy` and `maze` for consistency with the recommendation rather than to fix
 anything. `sapper` was migrated too, for a different reason: it is the one non-blocking example with
 a captured handler, so it is the one where falling through would have reached the console.
-*(A previous version of this paragraph said `turtle` and `maze` were the only two. It was written
-while looking at the keyboard channels and missed `tixy`'s `mousepressed`. Per-example measurement:
+*(Per-example measurement:
 `../wip/77-new-input-api/validation/notes/S83-legacy-handler-blast-radius.md`.)*
 
 **Four examples deliberately keep the legacy spelling** — `clock`, `colors`, `life`, `pong`. They own
@@ -657,11 +649,8 @@ same channel in front of it.
 
 ## D-ROUTE-LIFETIME — the route is held by an open project, released at its stop
 
-**SUPERSEDED IN PART, 2026-08-03** — see D-ONE-LIFETIME. The original decision released
-keyboard/text at the `'running' → 'project_open'` boundary while exempting pointer, and justified
-the asymmetry as inherited platform behaviour. That justification did not survive checking (below);
-the release is gone and every channel now shares one lifetime. What stands unchanged is the
-teardown invariant, which is the part later decisions depend on.
+**SUPERSEDED IN PART** — see D-ONE-LIFETIME. Every channel now shares one lifetime.
+What stands unchanged is the teardown invariant, which is the part later decisions depend on.
 
 **Decision (as amended).** The project route occupies **every** input channel — keyboard, text,
 pointer and the derived click events — from activation until the project stops. A non-blocking
@@ -669,17 +658,9 @@ project reaching `'project_open'` keeps them; `Ctrl+Esc` is the way back to the 
 stop, every handler restores to framework defaults and every project participant — handler tables,
 callbacks, widget configuration — resets.
 
-**Why the original rationale was withdrawn.** It read: *"This is the established platform
-behaviour, adopted as a design constraint because no product ruling motivated changing it,"* and
-called the keyboard/pointer asymmetry *"intentional and load-bearing"*. Checked against the PR base
-`3256aac`: `set_default_handlers` is called from exactly two sites — `suspend()` and
-`stop_project_run()` — and the `running → project_open` transition releases nothing. Both channels
-stayed installed until suspend or stop. There was no asymmetry to inherit. `release_keyboard_route`
-was introduced *by this feature*, keyboard-only, and pointer then had to be exempted from a release
-that had not previously existed — so the exemption was a consequence of the new mechanism, not a
-constraint on it. The asymmetry was also unreachable in practice: the release fired only when
-`user_is_interactive()` was false, and that predicate is "a widget or a pointer handler exists",
-so at the only moment it ran there were no pointer handlers to exempt.
+**Baseline (PR base `3256aac`).** `set_default_handlers` was called from exactly two sites —
+`suspend()` and `stop_project_run()` — and the `running → project_open` transition released nothing:
+both the keyboard and text channels stayed installed until suspend or stop.
 
 **Changed baseline behaviour.** Before this API, a running project without its own keyboard/text
 handler left the console callback installed. With no shown project widget, unhandled input could
@@ -691,7 +672,7 @@ participant with its own contract; it must not return by omission.
 **Consequence — a teardown invariant.** No callback, combo entry, or widget configuration
 survives the project that installed it — including **pending config** left by a hidden
 `configure`, which is widget configuration that has not reached a widget yet rather than an
-exception to the rule. *(Called a "draft" here until 2026-09-04; renamed by owner ruling, because
+exception to the rule. *(Called a "draft" here previously; renamed by owner ruling, because
 that word is now reserved for the **user's** unsubmitted text and this is the **programmer's**
 staged configuration. The old wording also said "unspent", which carried the one-shot stash
 semantics `D-CFG-BOUNDARY` retired — pending config now persists until replaced rather than being
@@ -733,9 +714,9 @@ individually revisable — but only by a named ruling, not by drift. See
 
 ## D-UNKNOWN-RAISES — unrecognised show/configure configuration raises
 
-**Status: implemented** (owner ruling, 2026-07-30). Enforced by `check_keys` /
+**Status: implemented** (owner ruling). Enforced by `check_keys` /
 `bad_key_message` in `consoleController.lua`, which cite this decision back.
-**Added to by D-CFG-BOUNDARY** (owner, 2026-08-27): `text` and `cursor` join
+**Added to by D-CFG-BOUNDARY** (owner): `text` and `cursor` join
 `force` as `show`-only keys. Nothing here is withdrawn.
 
 **Decision.** A key outside the documented config table, supplied to
@@ -745,7 +726,7 @@ unrecognised in this table and raises with a message naming
 `compy.input.callbacks`. `force` is a `show`-only key and raises from
 `configure`.
 
-**The `show`-only category, added 2026-08-27 (D-CFG-BOUNDARY).** `text` and
+**The `show`-only category, added by D-CFG-BOUNDARY.** `text` and
 `cursor` are `show`-only on the same terms as `force` and raise from
 `configure` with a message naming where they belong. They are the user's
 content, and `configure` never touches it. This is an addition to the list
@@ -832,8 +813,8 @@ console/editor actually migrate onto this surface; that migration remains delibe
 D-ROUTE-OWNS's consequence text. Whether to unify further — one instance-record class holding
 `shortcuts`/`hooks`/`callbacks`/methods together, with `dispatch` as a method rather than a free
 function — was raised and deliberately left open (this codebase states a preference for functional
-style over classes, `agents/rules.md`, versus the ergonomic appeal of one cohesive object); not
-resolved here.
+style over classes — `../conventions/architecture_principles.md`, *Prefer Functional Style* —
+versus the ergonomic appeal of one cohesive object); not resolved here.
 
 ---
 
@@ -875,7 +856,7 @@ objects used by console and editor remain implementation details.
 
 ## D-ONE-STATE-ASK — the widget answers one state question: `is_shown()`
 
-**Status: implemented** (owner ruling, 2026-07-31).
+**Status: implemented** (owner ruling).
 
 **Decision.** `compy.input.is_shown()` returns whether the widget is
 currently up. It is the only state query on the surface, and it is read-only.
@@ -890,7 +871,7 @@ therefore re-showed the widget on every tick.
 **Why only this one.** Everything else a project might poll — content, cursor,
 error state — it already receives through callbacks, which is D-NO-POLLING's
 whole point. Shownness is different: it is the one fact the framework changes
-without telling the project (a stop tears the widget down, a hide from another
+without telling the project (a stop destroys the widget, a hide from another
 callback lowers it), so a project that must not act twice has nothing to read.
 The internal flag it exposes is the widget's own `is_shown()`, so the answer
 cannot drift from the one the dispatch walk uses.
@@ -903,7 +884,7 @@ that, instead of relying on the warning as flow control.
 
 ## D-COMBO-SHAPE — a combo names modifiers plus one trigger, or a class
 
-**Status: implemented** (owner ruling, 2026-08-03).
+**Status: implemented** (owner ruling).
 
 **Decision.** A combo string is modifiers plus **exactly one** trigger token.
 A combo naming two triggers, or none, **raises at registration**. The trigger
@@ -912,7 +893,7 @@ Alt chord. Dispatch tries the exact combo first and consults the class only on
 a miss, so an exact binding always wins. A class never matches when the
 trigger is itself a modifier.
 
-**A bare `*` raises** (owner ruling, 2026-08-03). It satisfies the one-trigger
+**A bare `*` raises** (owner ruling). It satisfies the one-trigger
 rule, and the empty modifier set is a class like any other, so it would bind
 every *unmodified* key — `q` yes, `ctrl+s` no, that being the `ctrl+*` class.
 But "every key on this channel" is exactly what `hooks[event]` is, and a
@@ -950,7 +931,7 @@ binding conditional on nothing else being held: hold `a` for movement, press
 that wants them uses a hook, which sees every event on its channel, and asks
 the device for the key state it needs.
 
-> **Amended in place, 2026-08-10.** The paragraph above named the
+> **Amended in place.** The paragraph above named the
 > held-key view as a hook argument and `compy.input.keys_pressed` as the
 > out-of-event path. The first was already wrong — D-LOVE-ARGS gives every
 > consumer LÖVE's own argument list and nothing added — and the second is
@@ -966,7 +947,7 @@ more sophisticated is a hook, with no capability lost.
 
 ## D-IGNORE-REPEAT — `compy.input.fn.ignore_repeat`
 
-**Status: implemented** (owner ruling, 2026-08-03).
+**Status: implemented** (owner ruling).
 
 **Decision.** Dispatch does **not** gate on `isrepeat`: a held combo fires on
 every OS key repeat, and a hook sees every repeat too. A binding that should
@@ -976,7 +957,11 @@ act once per physical press wraps its handler in
 **Scope: whether the handler runs, and nothing else.** A fresh press returns
 whatever `fn` returned; a skipped repeat returns nothing, so the event carries
 on down the chain exactly as an unhandled one would. Consumption is declared
-separately (D-STOP-AND-SIDE) — the two are orthogonal and compose.
+separately (D-STOP-AND-SIDE) — the two are orthogonal and compose. Folding them
+into one wrapper is deliberately not offered: a handler-skipping wrapper that
+*also* consumed would split fresh-press behaviour from repeat behaviour — the
+fresh press falling through while every repeat is swallowed — which is
+incoherent.
 
 **It only bites on `keypressed`.** `isrepeat` is the third argument LÖVE gives
 that one channel and no other, so a `textinput` or pointer participant wrapped
@@ -988,15 +973,6 @@ weighed and rejected: it suppresses with no way to recover a hold-to-act
 binding, and it would leave the same hand-written check in `hooks.keypressed`,
 where commands are equally idiomatically bound. A wrapper has one signature
 and composes across all three tiers.
-
-**Withdrawn on the way here.** An earlier pass shipped `suppress_repeat`
-(skip the handler *and* consume the repeat) and `bypass_repeat`. Measuring
-them showed `suppress_repeat` offered an incoherent middle: with a
-non-consuming handler the *fresh* press fell through to the hook while every
-repeat was consumed, so press 1 behaved differently from presses 2+. Both are
-gone; `ignore_repeat` is `bypass_repeat` renamed, because "bypass" claimed
-something about where the event goes and that is no longer this wrapper's
-business.
 
 **On hooks.** It wraps a hook as readily as a shortcut. Whether that is wise
 is the project's call: a *whole-channel* hook wrapped in it, combined with
@@ -1014,7 +990,7 @@ explicitly altered — is satisfied, since the wrapper is opt-in.
 
 ## D-NO-LOG-NOISE — an unhandled event is not logged
 
-**Status: implemented as no change** (owner ruling, 2026-08-03).
+**Status: implemented as no change** (owner ruling).
 
 **Decision.** `dispatch` does not log when an event is consumed by nobody. The
 walk keeps its `nil` checks and gains no unhandled branch.
@@ -1049,7 +1025,7 @@ such, not an oversight to tidy later.
 
 ## D-STOP-AND-SIDE — `compy.input.fn.stop_here` and `.side_run`
 
-**Status: implemented** (owner ruling, 2026-08-03).
+**Status: implemented** (owner ruling).
 
 **Decision.** Two wrappers declare what becomes of the event, at the
 registration site rather than inside the handler:
@@ -1095,7 +1071,7 @@ terms, rather than for their return value (`always_true`/`always_false`, which
 is what they are underneath). A registration table is read to answer "what
 happens to this key", and the names answer it there.
 
-**They are called wrappers, uniformly — not combinators** (owner, 2026-09-04).
+**They are called wrappers, uniformly — not combinators** (owner).
 The word had drifted into this entry, into `consoleController.lua` and into
 `input_events_spec.lua`, while `doc/input_api.md` — the document a project
 author actually reads — has said *wrapper* throughout. The guide's word wins,
@@ -1146,10 +1122,10 @@ keyboard and text, with the same error boundary and the same lifetime. Concretel
 
 **Why.** The keyboard/pointer split was this feature's own invention rather than inherited
 behaviour (D-ROUTE-LIFETIME, amended). Once that was established, every remaining argument for keeping
-pointer outside the chain dissolved: the lifecycle difference was self-inflicted and unreachable,
-the consume contract cost nothing because nothing returned a value, and the pieces that looked
-like distinct machinery — a second wrapper, a second install path, a bespoke click surface —
-existed only to serve the split. Unifying removes mechanism instead of adding it.
+pointer outside the chain dissolved: the consume contract cost nothing because nothing returned a
+value, and the pieces that looked like distinct machinery — a second wrapper, a second install
+path, a bespoke click surface — existed only to serve the split. Unifying removes mechanism instead
+of adding it.
 
 **Consequence, accepted.** A non-blocking project with no interaction surface keeps the keyboard
 until it stops, where it previously handed it back at `'project_open'`. That is the pre-feature
@@ -1205,15 +1181,15 @@ Excluding the button was considered and rejected, on the owner's challenge. The 
 excluding it — "the button already arrives as an argument, so the handler can test it" — applies
 word for word to the keyboard, where the key also arrives as an argument and is a combo trigger
 anyway. Taken seriously it abolishes the shortcuts tier entirely and puts every binding back
-behind `if button == 2`, which is the string-tag dispatch `agents/rules.md` forbids in as many
-words. A shortcuts tier exists precisely so a handler does not have to test what it was
+behind `if button == 2`, which is the string-tag dispatch the coding conventions forbid in as many
+words (`../conventions/architecture_principles.md`, *Write Lua, Not C with Lua Syntax*). A shortcuts tier exists precisely so a handler does not have to test what it was
 registered for.
 
 **Consequence, accepted.** A channel's trigger is read from a different argument position per
 channel (first for keys and text, third for buttons). That is one table of accessor functions,
 not a branch, and it is the only per-channel knowledge the route holds.
 
-**The derived clicks keep `(x, y)` and name no button** (owner ruling, 2026-08-07). They are not
+**The derived clicks keep `(x, y)` and name no button** (owner ruling). They are not
 LÖVE events and their signature does not resemble one, so there is no stock shape to converge on
 and no reason to widen them for symmetry's sake. They take modifier classes only. A project that
 needs to distinguish which button produced a click binds `mousereleased` and does its own timing,
@@ -1286,7 +1262,7 @@ matcher reads from changes.
 2. **`Key.*` is legitimate inside the shortcut matcher.** The combo-string builder
    (`combo_string` / `any_mod`, D-COMBO-TABLES) reads the device to name the modifiers it
    serialises. This is the one place a direct read is not merely permitted but correct.
-   **Shape ruled in place, 2026-08-09 (owner):** the builder calls `Key.ctrl()`/`Key.alt()`/
+   **Shape ruled in place (owner):** the builder calls `Key.ctrl()`/`Key.alt()`/
    `Key.shift()` **directly** — it does not keep its table parameter and receive a per-key
    device lookup. The rejected alternative would have left the builder source-blind and
    table-testable; the ruling prefers symmetry with the pre-dispatch gate, which already polls
@@ -1297,7 +1273,7 @@ matcher reads from changes.
    `love.keyboard.isDown`; and the mock's variadic fix becomes a prerequisite (see the
    amendment note below).
 3. **`Key.*` at a call site remains a smell.**
-   > **AMENDED by D-USAGE-SHAPE, 2026-08-11.** This is **withdrawn as a general claim**. An
+   > **AMENDED by D-USAGE-SHAPE.** This is **withdrawn as a general claim**. An
    > imperative modifier test is the correct answer for **continuous state** — "is this held
    > right now" — and is a smell only when it answers a *transition* that a binding should have
    > expressed, or when it re-implements the fold. D-USAGE-SHAPE states the boundary. The rest of
@@ -1312,13 +1288,13 @@ matcher reads from changes.
    and what it lacks is a *mechanism*, not a justification — no shortcuts table exists at that
    position. **It could build its own table** — the introspectability reason the rule exists
    applies to it too: bindings that can be listed, documented and rendered rather than read out
-   of a cascade. **That is not committed to** (owner, 2026-08-09): naming the layer does not
+   of a cascade. **That is not committed to** (owner): naming the layer does not
    oblige the table, and building one is out of scope for this feature's PR and may never be
    done. If it ever is, it must be visibly a **second, privileged table**, structurally separate
    from a project's own and stating its non-overridability where it lives — otherwise the win
    arrives with a false promise of override.
 
-   > **Amended by D-RESERVE-TABLE, 2026-08-16.** The table is **built**. What is withdrawn is only
+   > **Amended by D-RESERVE-TABLE.** The table is **built**. What is withdrawn is only
    > the *not committed to* — the separateness requirement above stands unchanged and is now a
    > build instruction it satisfies (`RESERVED`, `controller.lua`, which states both its
    > non-overridability and its opposite consumption rule where it lives). The cascade of
@@ -1373,24 +1349,12 @@ self-consistent, because SDL's batch timing is not modelled by the mock. The tra
 staleness *was* expressible in a test; this is not. Accepted as the price of having no state.
 
 **Consequence — a prerequisite, not an option.** `tests/mock.lua`'s `isDown` is single-argument,
-so every variadic `Key.ctrl()` under test consults only the **left** key of the pair. It must
-become variadic (harmony's `patch_isDown` shape) before the suite can be trusted about modifiers
-at all.
-
-> **Amended in place, 2026-08-09 — scope corrected, then reinstated by ruling.**
-> An earlier pass challenged this paragraph and was right on the facts as they then stood: no test can
-> reach a state where left and right differ (the mock's token map writes only `lctrl`/`lshift`/
-> `lalt`, and no test installs its own keyboard `isDown`), so making the mock variadic changes
-> **zero existing test results**, and the single-argument `isDown` is pre-existing and untouched
-> by this branch. "Before the suite can be trusted about modifiers at all" overstated it.
->
-> **The owner has since ruled the matcher's shape (2026-08-09): the combo-string builder calls
-> `Key.ctrl()`/`Key.alt()`/`Key.shift()` directly** rather than being handed a per-key device
-> lookup. Under that shape all modifier truth in dispatch routes through the two-argument call,
-> so the fix is a genuine prerequisite again — precisely scoped: **not** that existing results
-> are wrong, but that **no test proving the new matcher can exercise a right-hand modifier
-> until the mock is variadic and its token map gains `rctrl`/`rshift`/`ralt`** (the `held` table
-> already has the slots). It lands first, as its own commit, ahead of the test rewrite.
+so every variadic `Key.ctrl()` under test consults only the **left** key of the pair. Under the
+matcher's ruled shape, the combo-string builder calls `Key.ctrl()`/`Key.alt()`/`Key.shift()`
+directly, so all modifier truth in dispatch routes through the two-argument call. **No test
+proving the matcher can exercise a right-hand modifier until the mock is variadic** (harmony's
+`patch_isDown` shape) **and its token map gains `rctrl`/`rshift`/`ralt`** (the `held` table
+already has the slots). It lands first, as its own commit, ahead of the test rewrite.
 
 **Consequence — debt that ceases to exist.** The focus-loss staleness fix, the gateway's
 event-set migration, the harmony reconciliation that migration would have forced, and the open
@@ -1495,7 +1459,7 @@ the proposal.
 
 ## D-EXACT-RESERVE — a framework reservation matches its modifier set exactly
 
-**Owner ruling, 2026-08-16.** Amends nothing; it states for the **gate** the rule
+**Owner ruling.** Amends nothing; it states for the **gate** the rule
 D-COMBO-SHAPE already states for everyone else. D-COMBO-SHAPE, D-ASK-THE-DEVICE and D-THREE-MODS
 stand unchanged — D-COMBO-SHAPE rules that a combo *is* its modifier set exactly, D-ASK-THE-DEVICE
 rules where modifier state is read from, D-THREE-MODS closes the set at three.
@@ -1534,7 +1498,7 @@ looseness producing an outright defect. Plain Ctrl+Escape is untouched, so the r
 of a running project is exactly as it was: the safety property does not depend on
 tolerance, and never did.
 
-**Scope — confirmed by the owner, 2026-08-16.** The rule binds the **pre-dispatch gate**
+**Scope — confirmed by the owner.** The rule binds the **pre-dispatch gate**
 and nothing else: the block that runs before a route is forwarded to, and whose power is
 non-overridable. Console and editor key handling is route-level — it competes with no
 project, since no project is running while the console owns the route — and its combos
@@ -1545,9 +1509,9 @@ a feature whose mandate is the project-facing input API, and it owes the PR desc
 a justification line. The ground for it is that this feature made every other layer
 exact and left the one layer with the most power tolerant.
 
-**Amended by the `MERGE-01-05` import, 2026-09-05 — the worked example's other half moved,
+**Amended by the import — the worked example's other half moved,
 and the rule is what let it move alone.** Bare `ctrl+s` used to close the editor's buffer;
-upstream PR #45 **deleted that**, made leaving `Shift+Esc`, and the owner ruled 2026-09-04 that
+upstream PR #45 **deleted that**, made leaving `Shift+Esc`, and the owner ruled that
 **#45 holds the product authority there**. **What #45 does NOT do is reserve the key** — its
 checkpoint is **`Ctrl+K`** (`Ctrl+Shift+K` restores), in its code and in its own `doc/EDITOR.md`,
 whose only `Ctrl+S` row is *"Stop project"*. A **stale comment in its `controller.lua`** says
@@ -1563,7 +1527,7 @@ editor branch. See `technical_debt/input.md`, `T-CTRL-S-UNCLAIMED`.
 
 ## D-RESERVE-TABLE — the gate's reservations are combo strings in a privileged table
 
-**Owner ruling, 2026-08-16.** **Amends D-ASK-THE-DEVICE point 3**, which named this
+**Owner ruling.** **Amends D-ASK-THE-DEVICE point 3**, which named this
 table, declined to commit to it, and required that if it were ever built it be
 "visibly a second, privileged table, structurally separate from a project's own".
 That requirement stands and is now a build instruction rather than a condition on
@@ -1624,7 +1588,7 @@ deliberately reachable without the gate.
 
 ## D-CFG-BOUNDARY — the configuration boundary: the user's content is `show`'s alone
 
-**Owner-ruled 2026-08-27.** **Adds a `show`-only key category to D-UNKNOWN-RAISES** (below).
+**Owner-ruled.** **Adds a `show`-only key category to D-UNKNOWN-RAISES** (below).
 D-WIDGET-AT-BOOT, D-EDIT-LIFECYCLE and D-ONE-STATE-ASK stand unchanged: this decision is about *which call
 may set what*, not about lifecycle or routing.
 
@@ -1645,7 +1609,7 @@ is the project's, whatever its lifetime, and lifecycle is not something the user
 
 **Decision — four statements, in force together.**
 
-1. **`show` owns the content baseline — and AMENDED 2026-09-07: it no longer destroys.** `text`
+1. **`show` owns the content baseline — and AMENDED: it no longer destroys.** `text`
    given is the content. **`text` absent leaves the content alone**, so a re-show finds what the
    last lifecycle verb left. `cursor` is applied after it.
    **Owner ruling:** *"i feel with the flags covering wide range of use cases we do not need to
@@ -1659,23 +1623,20 @@ is the project's, whatever its lifetime, and lifecycle is not something the user
    opening an unrelated question passes `text = ''` (or lets the previous verb's `clear_on_*` do
    it). The old rule made that free and made the re-show impossible; the new one makes the re-show
    free and the fresh start explicit, which is the trade the ruling takes.
-   **IMPLEMENTED 2026-09-09.** `reset_content` is one branch — `if cfg.text ~= nil then set_text`
-   — and the entry that carried the obligation, `../technical_debt/input.md`, `T-SHOW-DESTROYS`, is
-   retired. **Two edges the amendment implied and did not state, settled by owner ruling the same
-   day** (*"text given changes the content, text omitted does not. Force is orthogonal — it
+   **IMPLEMENTED.** `reset_content` is one branch — `if cfg.text ~= nil then set_text`
+   — and the implementation obligation is discharged. **Two edges the amendment implied and did not
+   state, settled by owner ruling** (*"text given changes the content, text omitted does not. Force is orthogonal — it
    determines whether `show()` is allowed to run on an already shown widget"*):
    - **`text = false` reads as absent**, so it keeps the content. It is the uniform unset of
      statement 3, and `checked_text` normalises it to `nil` at the boundary; the explicit fresh
      start is **`text = ''`**, which is text *given*. *(This reverses a behaviour pinned and
-     documented in 2026-09-01's boundary lift, where `false` came to mean "opens empty".)*
+     documented in an earlier boundary lift, where `false` came to mean "opens empty".)*
    - **`force` gains no content meaning.** A forced show with no `text` keeps the draft exactly as a
      bare one does; `force` answers *"may this run over a widget already shown"* and nothing else.
    **Three things beyond the text survive a re-show with it**, because `clear_input()` took all four
    together: the selection, the custom status and the history index. Each has its own case in
    `tests/input/input_widget_control_spec.lua` — the old call's silent breadth is exactly what an
    unpinned reader could not see.
-   *(Prior statement 1: `text` absent was an empty field — *"absent means empty"* — and a project
-   wanting the previous draft back had to pass it.)*
 2. **`configure` never touches the user's content.** `text` and `cursor` at `configure` are **keys
    that belong to another call** and are refused as such — the treatment the lifecycle callbacks
    already get, with a message naming where they belong. `set_text` and `set_cursor` are the live
@@ -1710,7 +1671,7 @@ is the project's, whatever its lifetime, and lifecycle is not something the user
 a legitimate call at an inconvenient moment but a call to the wrong function, true whether the
 widget is shown or hidden.
 
-This is an **addition, not an amendment** (owner, 2026-08-27). D-UNKNOWN-RAISES's warn list names three
+This is an **addition, not an amendment** (owner). D-UNKNOWN-RAISES's warn list names three
 runtime states and `configure{text}` was never one of them, so nothing there is being reversed; and
 the decision already raises for *a key that belongs to another call* — `force` is a `show`-only key
 and raises from `configure`. `text`/`cursor` join that existing category rather than crossing a line
@@ -1733,7 +1694,7 @@ project. The retained `prompt` is unaffected — it is project-owned, applies im
 still there at the next `show`.
 
 **Third, content is not preserved across `hide` → `show` either, and the approved design said it
-would be** (owner-ruled 2026-09-02). The ratified spec required restoration in as many words —
+would be** (owner-ruled). The ratified spec required restoration in as many words —
 *"Content preserved for the next `show()` without `text`"* — and the round-2 reviewed text spelled
 it out: *"Input content is preserved (subsequent `show()` will display it unless `text` is
 provided)"*. Statement 1 is why it is not: `show` seats the content baseline, so a bare `show()`
@@ -1752,7 +1713,7 @@ seats it"*, which is more API to explain than the case is worth.
 **If a project ever needs it, it saves and restores the content itself, and it can do all of that.**
 `get_text()` and `get_cursor()` read the content and the caret before the `hide`, and
 `show{text = …, cursor = …}` puts both back; both reads answer `nil` while hidden, so the save
-happens before hiding either way. The **content getter is this release's** (2026-09-03, owner:
+happens before hiding either way. The **content getter is this release's** (owner:
 *"write it as active technical debt to be resolved before release"*) and it was added **because of
 this ruling**: the fallback offered here covered the caret and not the text, which made
 `doc/input_api.md`'s *"keep it yourself"* advice unfollowable for anything the user had typed. It is
@@ -1781,8 +1742,8 @@ redundant), and it must state whether the lifecycle callbacks — assignable onl
 
 ## D-AUTO-HIDE — `auto_hide`: the widget hides itself on submit
 
-**Status: SUPERSEDED by `D-LIFECYCLE-FLAGS`, in force nowhere — `FLAGS-01` landed 2026-09-09**
-(owner ruling, 2026-08-30; superseded 2026-09-06/07; the code followed on 2026-09-09). `auto_hide`
+**Status: SUPERSEDED by `D-LIFECYCLE-FLAGS`, in force nowhere.**
+(owner ruling; superseded; the code followed). `auto_hide`
 is **not a key any more**: it left `show`, `configure`, the guide and the CHANGELOG with the sprint,
 and `hide_on_submit` is the only name. Three further things below no longer hold: **statement 3**,
 *"submit only — cancel is not a close"*, which the cancel hide cell overrules; **statement 5**'s
@@ -1867,18 +1828,13 @@ behaves exactly as it did.
 
 ## D-PAYLOAD-SPLIT — the submit callbacks are told apart by their payload
 
-**Status: RETIRED, replaced by `D-ONE-PAYLOAD` — in force nowhere; `PAYLOAD-01` landed 2026-09-09**
-(owner ruling, 2026-09-06; the code followed three days later). The split it decided **does not
+**Status: RETIRED, replaced by `D-ONE-PAYLOAD` — in force nowhere.**
+(owner ruling; the code followed shortly after). The split it decided **does not
 exist in the tree**: `after_submit` receives the same string `on_text_entered` does, and the two are
 told apart by *when* they run. **The entry is kept for its reasoning, not for its rules** — the
 argument about which callback deserves which shape, and the migration analysis that named every
 in-tree site, are what the successor inherits rather than restates. Read `D-ONE-PAYLOAD` below for
 what is true.
-
-*Prior status, superseded in place: "SUPERSEDED by owner ruling, 2026-09-06 — one payload, and it is
-the string. DECIDED, NOT YET IMPLEMENTED", with the note that the body below described the shipped
-behaviour until the implementation landed. It has landed; the body below describes nothing that
-ships.*
 
 **What the reversal costs, recorded because it was ruled with the cost stated.** The distinction
 this decision invented is removed **inside the release that documented it**, so the guide, the
@@ -1890,15 +1846,14 @@ examples.
 
 **What separates the two submit callbacks now that the payload does not: *when they run*.**
 `on_text_entered` fires first, then `after_submit`, both after validation. That is a weaker
-distinction than a payload and the surface reflects it — the simple surface being built in the same
+distinction than a payload and the surface reflects it — the basic surface being built in the same
 release folds them into one entry point, `compy.on_answer` (the answer plus the disposal), and the
-low-level pair remains for a project that needs the two moments apart. **A reader must be able to
+underlying pair remains for a project that needs the two moments apart. **A reader must be able to
 state the difference in one sentence**, which was this entry's own test, and after the change the
 sentence is about order rather than shape.
 
-*Prior status — implemented* (owner, 2026-08-30; built at `FEAT-01-04`). `T-PLAINTEXT-ENTERED` is
-retired. This decision is also the **answer to `FIX-02-01`**, which asked whether the two callbacks
-are one thing configured two ways — closed with it, as `FEAT-01-03` required.
+*Prior status — implemented* (owner; built with the payload-split work). This decision is also the **answer to** whether the two callbacks
+are one thing configured two ways — closed with it.
 
 **Decision.** `on_text_entered` receives the submitted content as a **single concatenated string**.
 `after_submit` receives it as the **list of lines**. Both still fire, in that order, after
@@ -1907,7 +1862,7 @@ validation. The recommended division of labour — *use `on_text_entered` to pro
 restricted to its recommended use.
 
 **Why.** Today both callbacks receive the identical argument, so the surface offers two names for
-one moment and the guide cannot say what distinguishes them. That is the defect `FIX-02-01` names,
+one moment and the guide cannot say what distinguishes them. That is the defect this decision names,
 and the cheap-looking fix — delete one — costs a real capability, because the two run at different
 points of the flow and a project may legitimately want both. Giving them **different payloads**
 resolves the redundancy without removing anything: each callback acquires a reason to exist that a
@@ -1931,18 +1886,18 @@ which is this decision performed by hand at each call site; the other three (`tu
 `guess`) take `lines[1]`.
 
 **The migration is not uniform, and the asymmetry runs opposite to the sentence above** (verified in
-code at `FEAT-01-03`, 2026-08-30):
+code):
 
 - **The four that join keep working untouched.** `string.unlines` is idempotent over a string —
   `string.join` returns its argument unchanged when handed one (`util/string/string.lua`) — so
   `string.unlines(already_joined)` is a no-op. Rewriting them is *clarity* work, which is exactly
-  what `FEAT-01-07` weighs example by example, and `wontfix` on any of them costs nothing.
+  what this branch weighs example by example, and `wontfix` on any of them costs nothing.
 - **The three that index break, and break silently.** `("abc")[1]` is `nil` in Lua, not an error, so
   `turtle` would `eval(nil)`, `valid` `print(nil)` and `guess` `tonumber(nil)`. These are the
-  migration, and they land **with** `FEAT-01-04`, not after it.
+  migration, and they land **with** the change, not after it.
 - **Both separate-repo consumers are in the safe group** (`maze`, `balloons`); all three mandatory
   sites are in-tree. The breaking half of this change therefore needs **no cross-repo coordination**
-  — worth knowing before `CHG-01`'s migration note is written for an audience.
+  — worth knowing before the CHANGELOG's migration note is written for an audience.
 - **For those three the payloads are only identical while the input is one line.** Shift+Enter is a
   line feed in any widget, so after the split they receive the whole text where they used to receive
   its first line. Arguably a latent bug fixed rather than a regression, but it is a behaviour change
@@ -1952,10 +1907,9 @@ code at `FEAT-01-03`, 2026-08-30):
 
 ## D-ONE-PAYLOAD — every content-bearing callback receives the same plain string
 
-**Status: IMPLEMENTED, 2026-09-09 (`PAYLOAD-01`).** Owner ruling, 2026-09-06, on the stakeholders'
+**Status: IMPLEMENTED.** Owner ruling, on the stakeholders'
 proposal block: *"let it be — same payload where reachable, plaintext."* **It retires
-`D-PAYLOAD-SPLIT`**, which is kept above for its reasoning and rules nothing. Debt entry:
-`../technical_debt/input.md`, `T-ONE-PAYLOAD`, paid.
+`D-PAYLOAD-SPLIT`**, which is kept above for its reasoning and rules nothing.
 
 **Placed here rather than at the end of the ledger**, immediately after the entry it replaces, so a
 reader who arrives at the retired decision meets its successor next. That is a departure from the
@@ -1998,13 +1952,13 @@ and three took `lines[1]`, which is the same operation for the single-line case 
 
 **What it costs, recorded because the ruling was taken with the cost stated.** A distinction this
 release invented is removed inside the same release, so the guide, the `CHANGELOG` and the off-repo
-consumer all migrate a second time, and `PR-01-02` owes a justification row for it.
+consumer all migrate a second time, and the PR owes a justification row for it.
 
 ---
 
 ## D-CONTENT-NORM — content is normalised so the cursor address is unambiguous
 
-**Status: implemented** (owner, 2026-09-01; built at `BUG-02-01`). Ruled while weighing whether
+**Status: implemented** (owner). Ruled while weighing whether
 `set_text`'s list branch should split embedded newlines, and stated as the general rule rather than
 as that fix, because the rule already governed a behaviour nobody had written down.
 
@@ -2042,7 +1996,7 @@ nothing here truncates, escapes or re-flows what is set. The rule removes repres
 cannot be addressed, and nothing else.
 
 **The boundary, stated as the pair it is: normalise representation, refuse structure**
-(owner, 2026-09-01). The two are different mistakes and deserve different answers.
+(owner). The two are different mistakes and deserve different answers.
 
 - **A representation variance is one value spelled differently** — a string against a list, an
   embedded newline, a byte that is not valid UTF-8. The project meant text and we can tell what
@@ -2058,22 +2012,14 @@ mistake behind content that looks deliberate. A project that genuinely has a num
 shown converts it itself, which costs one `tostring` and says what was meant. **Tolerance is for
 input we can read; it is not for input we would have to guess at.**
 
-*(An earlier variant of this paragraph argued instead that `{"a", 42}` is the argument shape of
-`UserInputModel:insert_text_line(text, li)`, so such a list most likely comes from confusing two
-functions. That reasoning does not hold and is recorded as withdrawn rather than quietly dropped:
-`insert_text_line` is a model method, absent from `compy.input` and from this guide, and
-unreachable from a project's sandbox — nobody can confuse `set_text` with a function they cannot
-see or call. The conclusion survives on the closed-contract argument above, which needs no such
-story.)*
-
-This settles `text` the same way `BUG-01-08` settled `cursor`: a malformed value earns **one**
+This settles `text` the same way the `checked_cursor` fix settled `cursor`: a malformed value earns **one**
 message naming the call and the expected shape, rather than a raw Lua error from inside the
 framework or a silent repair. **It settles those two keys and no others** — `show{validator = 42}`
 and `show{on_text_entered = 42}` are still accepted and still fail later at
 `userInputController.lua` with a raw `attempt to call` error.
 
 **And it settles exactly the right two, which is not a coincidence and is no longer left open**
-(owner ruling, 2026-09-01). `text` and `cursor` are the **user's content**; every other key is
+(owner ruling). `text` and `cursor` are the **user's content**; every other key is
 **project-owned** — D-CFG-BOUNDARY's line, the same one that decides what `configure` may touch. The
 two classes fail differently and so are treated differently: *pass a wrong `text` and you confuse
 the **user**, who did not write it and cannot fix it; pass a wrong `validator` and you confuse
@@ -2081,16 +2027,15 @@ the **user**, who did not write it and cannot fix it; pass a wrong `validator` a
 first must be refused at the door; the second is self-diagnosing, so loud-and-late is an acceptable
 answer where silent was not. Extending the treatment to the callable keys is therefore **ruled
 against, not merely unscheduled**: *"I'd just not enroll too much input checking ceremony beyond
-necessary. its edu project, not space rocket navigation."* Retired in
-`../technical_debt/input.md`, *"The callable config keys are unchecked"*.
+necessary. its edu project, not space rocket navigation."* This ruling retired the debt entry that
+had raised the callable-key gap.
 
 **Consequence.** No public surface changes, and no capability of the documented shape is removed:
 the state normalisation eliminates — a line holding a raw newline — could not be produced by typing
 or by pasting, and reached one documented shape through one call while rendering wrong in both draw
-paths. It **was** observable, and the earlier claim here that it "could not be read back at all" was
-too strong (corrected 2026-09-01 by cold peer review): the `compy.input` surface has no content
+paths. It **was** observable: the `compy.input` surface has no content
 *getter*, so no set/get round-trip is affected, but `after_submit` received the line list itself
-(D-PAYLOAD-SPLIT, retired by D-ONE-PAYLOAD on 2026-09-09 — it is the joined string now), so a
+(D-PAYLOAD-SPLIT, retired by D-ONE-PAYLOAD — it is the joined string now), so a
 project could see the difference at submit and will now see something else.
 That is exactly why the change carries a `CHANGELOG.md` line. The behaviour change is
 recorded in `CHANGELOG.md`, stated for a project author in `../../input_api.md`
@@ -2115,14 +2060,15 @@ measures the column on the wrong line"*.
 
 ## D-LIFECYCLE-FLAGS — four flags, one per (verb × outcome); they supersede `auto_hide`
 
-**Status: IMPLEMENTED, 2026-09-09 (`FLAGS-01`). The holistic pass RAN before it and the matrix
-survived — widened, not reshaped** (owner rulings, 2026-09-06/07).
+**Status: IMPLEMENTED. The holistic pass RAN before it and the matrix
+survived — widened, not reshaped** (owner rulings).
 
 **What the implementation added to the design, and it is one thing:** *how* an owner seats its
 cells was deliberately left open here, and it is `UserInputController:seat_lifecycle(flags)`, a
 chained method in the shape of `always_shown()`. Constructor arguments were the idiom this entry
 gestured at and they do not extend — two are positional already, and four more would put the
-constructor at seven against `agents/rules.md`'s limit of four. The seating is the same write
+constructor at seven against the coding conventions' four-parameter limit
+(`../conventions/code.md`). The seating is the same write
 `configure_core` makes, so an owner's defaults and a project's `show` cannot drift apart.
 
 **The nine acceptance criteria hold**; the cases are in `tests/input/`, chiefly
@@ -2144,30 +2090,27 @@ alias case is **not** among them, because the alias was pulled before the sprint
    question *directly*, it removes the need for it, which is a stronger result and the reason the
    taxonomy is justified at four cells rather than two.
 2. **The defaults are the stakeholder's, and that is a ruling on the product, not on the
-   mechanism** (owner, 2026-09-07): *"@dsent requests for behaviours are authoritative, we support
+   mechanism** (owner): *"@dsent requests for behaviours are authoritative, we support
    them via defaults."* So the **project widget** seats `clear_on_submit` **on**, `hide_on_cancel`
    **on** and `clear_on_cancel` **off** — submit consumes the content, cancel preserves it and takes
    the widget down. This **replaces the seating in statement 3**, which preserved today's behaviour
    while the question was open. The class default (all four off, an unconfigured widget inert) is
    unchanged and is a different sense of the word.
-   **AMENDED 2026-09-09 — the cancel half of this is reversed.** The stakeholder's requested
+   **AMENDED — the cancel half of this is reversed.** The stakeholder's requested
    behaviour is still authoritative *as a behaviour*; what changed is that **supporting it via a
    default** was measured and found to strand five example programs, so it is supported via one
    documented line of `configure` instead. `hide_on_cancel` is **not** seated. The rest of this
    point stands, and the reasoning is in statement 3's *"least-destructive basis"* paragraph.
 3. **One acceptance criterion inverts with it — see criterion 4**, which was written to *preserve*
    `after_cancel` seeing an empty widget. Under the ruled seating it sees the draft. *(Still true
-   after the 2026-09-09 amendment, and for a plainer reason: cancel seats no cell, so there is
+   after the amendment, and for a plainer reason: cancel seats no cell, so there is
    nothing to empty the widget before the callback runs.)*
 
-**The mechanical question point 1 rests on is now RULED (owner, 2026-09-07):** *"we do not need to
+**The mechanical question point 1 rests on is now RULED (owner):** *"we do not need to
 hardcode any implicit destructive behavior into `show`."* `D-CFG-BOUNDARY` statement 1 is amended —
 activation no longer clears when `text` is absent — so **destruction has exactly one home, and it is
-this matrix**. The code still clears (`reset_content`), and that gap is
-`../technical_debt/input.md`, `T-SHOW-DESTROYS`.
-The implementation is registered as active debt with a roadmap sprint — `../technical_debt/input.md`,
-`T-LIFECYCLE-FLAGS`. Until it lands, `D-AUTO-HIDE` describes the shipped behaviour and this entry
-describes the target.
+this matrix**. Activation no longer clears when `text` is absent — `reset_content` runs only on
+`cfg.text ~= nil` — and the four lifecycle settings below shipped.
 
 **The third clause is the owner's and it qualified the first two — the pass it waited for has now
 run, and the status block above carries its result.** This entry was derived
@@ -2198,7 +2141,7 @@ combinations are **four independent, project-owned boolean settings**:
    `show{...}` — is about what a re-show inherits, not about what a verb leaves behind, and this
    matrix does not answer it; `D-CFG-BOUNDARY` statement 1 governs that question instead."* **It is
    three, not two** — the matrix does not answer the re-show question *directly*, it removes the need
-   for it, and `D-CFG-BOUNDARY` statement 1 was amended on 2026-09-07 to make that true.
+   for it, and `D-CFG-BOUNDARY` statement 1 was amended to make that true.
 2. **They are ordinary project-owned settings**, on `D-AUTO-HIDE`'s statement 2 unchanged: accepted
    at `show` **and** `configure`, applied when given, `false` to unset (`D-CFG-BOUNDARY`), and
    **persistent until replaced**. Silence is not a disarm. They are not `show`-only keys — that
@@ -2211,7 +2154,7 @@ combinations are **four independent, project-owned boolean settings**:
    - **the editor seats none**, so it is inert on both verbs;
    - **the console seats `clear_on_cancel`**, which is exactly what it does today;
    - **the project widget seats `clear_on_submit` and NOTHING on the cancel side** — **owner
-     ruling, 2026-09-09**, on the least-destructive basis; see the paragraph below, which is where
+     ruling**, on the least-destructive basis; see the paragraph below, which is where
      that basis is argued. Submit consumes the content, because a project processes a submission
      through its callbacks and the next entry starts empty; **Escape is a no-op unless the project
      asks for an outcome.** **This is a change to documented behaviour, deliberately made**: the
@@ -2219,22 +2162,21 @@ combinations are **four independent, project-owned boolean settings**:
      change carries its own guide edit, changelog line and justification row rather than arriving
      silently. *(Prior seatings, both superseded: `clear_on_cancel` alone, which preserved the
      shipped contract while the question was open; then `clear_on_submit` + `hide_on_cancel`, the
-     2026-09-07 ruling that took the stakeholders' requested behaviours as the defaults — reversed
-     on the cancel side two days later, by the evidence below.)*
+     ruling that took the stakeholders' requested behaviours as the defaults — reversed
+     on the cancel side shortly after, by the evidence below.)*
 
-   **The least-destructive basis, and it is a ruling about how a DEFAULT is chosen** (owner,
-   2026-09-09). A default is not settled by which behaviour is most wanted; it is settled by
+   **The least-destructive basis, and it is a ruling about how a DEFAULT is chosen** (owner).
+   A default is not settled by which behaviour is most wanted; it is settled by
    **which behaviour is safe to be wrong about**. Seating a cell destroys something — content, or
    the surface itself — on behalf of a project that never asked, and a project cannot un-ask
    before the first Escape reaches it. Seating nothing costs a project one line of `configure`.
    The two errors are not the same size, so the empty cell wins ties.
 
    **This was ruled on measured evidence, not on principle alone.** `hide_on_cancel` shipped as a
-   seated default on 2026-09-09 and the consumer sweep the next sprint ran found **five example
+   seated default and the consumer sweep the next sprint ran found **five example
    programs stranded by it** — `guess`, `tixy`, `repl`, `valid` and `balloons` each show the
    widget once, at load, with no re-show path, so one Escape ended the program's only input
-   surface for the rest of the run (`../technical_debt/input.md`,
-   `T-EXAMPLES-PREDATE-THE-FLAGS`; the per-example table is
+   surface for the rest of the run (the per-example table is
    [`../wip/77-new-input-api/validation/notes/S86-example-lifecycle-needs.md`](../wip/77-new-input-api/validation/notes/S86-example-lifecycle-needs.md),
    which dies with that tree). Reading down its cancel column: **not one example asked for
    `hide_on_cancel`**, one needs cancel not to destroy, one relied on the older clear, and five say
@@ -2263,7 +2205,7 @@ combinations are **four independent, project-owned boolean settings**:
    *Seating is per instance, as `disable_selection` and `allow_duplicate_line` already are. **How**
    it is passed is an implementation choice and deliberately not fixed here — those two are
    positional constructor arguments, and four more would put the constructor at seven against
-   `agents/rules.md`'s limit of four, so the implementation owes a different carrier.*
+   the four-parameter limit (`../conventions/code.md`), so the implementation owes a different carrier.*
 4. **`clear` means `model:cancel()`'s existing semantics — remember, then clear** — on **both**
    verbs. `cancel()` is `handle(false)` → `_remember()` when the text is non-empty → `reset()` →
    `clear_input()`, so the abandoned text reaches the input history before the line is emptied. That
@@ -2283,7 +2225,7 @@ combinations are **four independent, project-owned boolean settings**:
    owner attestation about a surface not in this repository and therefore **not checkable here**).
    **Removal trigger, single and explicit:** the owner confirms no consumer writes `auto_hide`.
    Absent that confirmation it is carried, and it costs one alias.
-   **PULLED 2026-09-06, on an assumption rather than a confirmation, and the distinction is the
+   **PULLED, on an assumption rather than a confirmation, and the distinction is the
    point.** Asked whether anything off-repo writes the key, the owner answered *"lets assume not
    yet"* — so **the alias is not carried and `hide_on_submit` ships as the only name**. This is
    deliberately recorded as weaker than the trigger's own wording: nobody checked the `serial` API,
@@ -2296,21 +2238,19 @@ combinations are **four independent, project-owned boolean settings**:
 6. **This supersedes `D-AUTO-HIDE` and amends `D-EDIT-LIFECYCLE`.** `D-AUTO-HIDE`'s statement 3
    (*"Submit only — cancel is not a close"*) is **overruled**: cancel gains a hide cell, which is
    what proposal #4 asks for. `D-EDIT-LIFECYCLE`'s *"the console sets no lifecycle callbacks so its
-   flows are no-ops"* was false while the clear was hardwired — a defect rather than a design
-   change, `T-NO-CALLBACKS-IS-NOT-A-NOOP` — and **making it flag-driven did not make it true**:
-   the console seats `clear_on_cancel`, so its Escape still clears, by its own request. The
-   sentence was corrected rather than fulfilled when this landed (2026-09-09); what became true is
-   the class default it was reaching for — **an instance that seats nothing does nothing**.
+   flows are no-ops"* is **not** what became true: **the console seats `clear_on_cancel`**, so its
+   Escape still clears, by its own request. What became true is the class default that sentence was
+   reaching for — **an instance that seats nothing does nothing**.
 
 **Composition with callbacks: flags do not refuse a callback and a callback does not refuse a flag.
 `before_*` vetoes the whole flow — every flag-driven outcome and the `after_*` with it.** **A raised
-callback now leaves the widget HIDDEN, not standing** — disposal runs before the callbacks
-(2026-09-07), so the raise no longer unwinds past a trailing `hide`. The owner took that inversion
+callback now leaves the widget HIDDEN, not standing** — disposal runs before the callbacks,
+so the raise no longer unwinds past a trailing `hide`. The owner took that inversion
 deliberately (*"let it be, documented"*): *"the failure worth seeing"* is the project suspending with
 the error, which the reorder does not touch. **`D-AUTO-HIDE`'s statement 5 is superseded on this
 point**, and the guide sentence that states it is rewritten by the sprint.
 
-**Ordering is UNIFORM: dispose, then notify — owner ruling, 2026-09-07.** Both flags of a verb act
+**Ordering is UNIFORM: dispose, then notify — owner ruling.** Both flags of a verb act
 **before** that verb's callbacks.
 
 | flow | order |
@@ -2348,17 +2288,17 @@ the guide's disarm paragraph standing.)*
 2. **`D-AUTO-HIDE`'s statement 4 rationale is overturned** — *"the project reacts, then the widget
    goes"* becomes *the widget goes, then the project reacts*. That argument was about code order, not
    about anything a user can see.
-3. **The raise edge inverts, and the inversion is ACCEPTED (owner, 2026-09-07: *"let it be,
+3. **The raise edge inverts, and the inversion is ACCEPTED (owner: *"let it be,
    documented"*).** Today a callback that raises leaves the widget **standing**, because the raise
    unwinds past the trailing `hide` (`D-AUTO-HIDE`, statement 5; the guide says *"If one of your
    callbacks raises, the widget stays shown"*). With disposal first, **a raising callback leaves the
    widget hidden**. It was put to the owner as a re-ruling rather than inherited silently, and the
    answer is to take it and say so — *"the failure worth seeing"* is the project suspending with the
    error, which the reorder does not touch; the widget's remaining on screen was never what carried
-   it. **`D-AUTO-HIDE` statement 5 is superseded on this point, and the guide's bullet is rewritten
-   by `FLAGS-01-04`**, not left to be discovered.
+   it. **`D-AUTO-HIDE` statement 5 is superseded on this point, and the guide's bullet is
+   rewritten**, not left to be discovered.
 
-***Prior framing — the asymmetry the 2026-09-07 ruling replaced.* It was deliberate and it was a
+***Prior framing — the asymmetry the ruling replaced.* It was deliberate and it was a
 preservation, and it is kept because it records what the shipped code does until the sprint lands,
 and because its final paragraph is the reason the uniform order goes *dispose-first* rather than
 *notify-first*: generalising submit's old ordering to cancel would have handed `after_cancel` the
@@ -2373,7 +2313,7 @@ cases assert callback *order* rather than what the widget *contains*. *(An earli
 entry did exactly that, in a sentence claiming composition was unchanged. Caught by this decision's
 cold review; recorded rather than quietly repaired, because the failure is the interesting part.)*
 
-***Prior framing, superseded 2026-09-07 by the uniform dispose-then-notify order — `hide_on_cancel`
+***Prior framing, superseded by the uniform dispose-then-notify order — `hide_on_cancel`
 now runs BEFORE `after_cancel`, with the rest of its verb's disposal.*** It read: *"`hide_on_cancel`
 goes last, after `after_cancel`, matching submit's 'the project reacts, then the widget goes' — it is
 a new cell, so it has no shipped order to preserve, and the parallel is the reason to put it
@@ -2385,7 +2325,7 @@ trailing hide takes it down.
 does today (`cancel_flow` returns on a truthy `before_cancel`) and it is stated here because
 `D-EDIT-LIFECYCLE`'s *"a truthy return skips the step it guards"* reads as skipping only the
 destruction. **That sentence is wrong about the shipped code**, independently of this decision, and
-`FLAGS-01-04` corrects it.
+this change corrects it.
 
 **Why flags rather than callbacks for the destruction.** Expressing the clear as a *default
 callback* was considered and rejected: today `after_cancel` is **additional** to the clear, so a
@@ -2396,19 +2336,19 @@ additive is worth one more setting.
 
 **Acceptance criteria** — the sprint is not done until all nine hold:
 
-1. **The editor's Escape matches #45's expectations** (owner, 2026-09-06). Bare Escape in
-   navigation and in editing does **nothing**, per the routing contract **Vadim1987 attested on
-   2026-09-06** for his own tree, by probing it rather than reading it; `Shift+Esc` is unaffected
+1. **The editor's Escape matches #45's expectations** (owner). Bare Escape in
+   navigation and in editing does **nothing**, per the routing contract **Vadim1987 attested**
+   for his own tree, by probing it rather than reading it; `Shift+Esc` is unaffected
    and still never reaches the widget. The contract is `D-EDITOR-KEYS`, which states it in full.
 2. **The edit-mode half of AC1 is a fix, and it must be pinned as one.** Today bare Escape in the
    editor's **edit** mode empties the block the user opened, in place, while staying in edit mode —
-   probed 2026-09-06, and it is data loss on the primary editing path rather than the harmless
+   probed, and it is data loss on the primary editing path rather than the harmless
    clear of an empty line that `T-NAV-ESCAPE` describes for navigation. **A breaking test asserting
    the block's CONTENT survives** — not which callback fired — is the criterion; the existing pins
    assert callback order and would stay green through this defect.
 3. **A widget with no flags and no callbacks is inert** on both verbs — statement 3's class default,
    tested directly rather than inferred from a host's behaviour.
-4. **Ordering is pinned per cell**, against the table above **as amended 2026-09-07 — disposal runs
+4. **Ordering is pinned per cell**, against the table above **as amended — disposal runs
    before the verb's callbacks, on both verbs.** So: a callback sees the widget **after** its flags
    have acted, and receives the content **as its argument** rather than by reading the widget;
    `after_cancel` sees an **empty** widget wherever `clear_on_cancel` is seated (the console) and the
@@ -2416,7 +2356,7 @@ additive is worth one more setting.
    only callback order does not satisfy this** — it must assert what the widget contains when each
    callback runs, **and one case must pin the re-ask**: a `show` issued from inside a callback
    survives the flow that called it.
-   **On the project widget this criterion INVERTS under the 2026-09-07 seating**: `clear_on_cancel`
+   **On the project widget this criterion INVERTS under the ruled seating**: `clear_on_cancel`
    is not seated there, so `after_cancel` sees **the draft**, and the case pinning it must say so.
    *(This criterion was originally written as a preservation of the shipped contract — `after_cancel`
    always sees empty. That contract is what the ruled default removes, and the criterion is kept
@@ -2425,7 +2365,7 @@ additive is worth one more setting.
 5. **The console's Escape is unchanged** — remember-then-clear, now because `clear_on_cancel` is
    seated on its instance rather than because the widget destroys unconditionally.
 6. **The project surface's documented behaviour CHANGES, and the second branch of this criterion is
-   the live one** (owner, 2026-09-07): the change is recorded in `../../input_api.md` **and**
+   the live one** (owner): the change is recorded in `../../input_api.md` **and**
    `../../../CHANGELOG.md`, with a justification-table row, for **both** verbs — submit now clears,
    cancel now hides and keeps. *(The first branch — preserve it by seating `clear_on_cancel` — was
    the live one while the proposals were unruled.)*
@@ -2441,15 +2381,15 @@ additive is worth one more setting.
    correct and is not a cell to special-case.
 
 **What the matrix deliberately cannot express.** `hide` is an **outcome** here and never a verb, so
-there is no *clear-on-hide* cell — the stakeholders' own alternative in the same proposals block
+there is no *clear-on-hide* cell — the stakeholders' own floated alternative
 (*"bind auto-clear on hide"*) is **not** expressible in this shape. That is a real narrowing and it
 is chosen: `hide()` fires no flow (AC9), so hanging destruction off it would make a state flip into
 a lifecycle entry, which is the coupling `D-EDIT-LIFECYCLE` exists to prevent. **A project wanting
 that composes it — `get_text()` before `hide()`** — which is what the guide already advises.
 
-**What this no longer leaves open — the defaults are RULED (owner, 2026-09-07).** Which defaults the
+**What this no longer leaves open — the defaults are RULED (owner).** Which defaults the
 **project** widget carries — whether submit clears (#3) and whether cancel hides rather than clears
-(#4) — was `PROP-01`'s to rule, and it ruled **both in**, on the stakeholders' authority over
+(#4) — was the proposal's to rule, and it ruled **both in**, on the stakeholders' authority over
 product behaviour. This entry did what it was built to do: the ruling was **a choice of booleans
 rather than a redesign**, and the pass that took it was free to find four cells the wrong count and
 found them the right one — covering a third proposal the entry had excluded. *(Statement 1's
@@ -2460,7 +2400,7 @@ lives.)*
 
 ## D-EDITOR-KEYS — the editor's key contract is the product's, and this is the record of it
 
-**Status: RETROFITTED, 2026-09-06.** This entry records a design that was decided and built outside
+**Status: RETROFITTED.** This entry records a design that was decided and built outside
 this ledger, and it exists because we were reasoning about those keys without a written statement of
 what they are supposed to do. **Nothing here is a new ruling of ours.**
 
@@ -2469,15 +2409,14 @@ what they are supposed to do. **Nothing here is a new ruling of ours.**
 not reproduced here**. That omission is the point rather than a gap: the argument is a product
 argument about how the editor should feel to use, it was not made to us, and a second-hand paraphrase
 in our ledger would become the thing later readers cite instead of the source. What this entry
-carries is **what the keys do** and **who owns the answer**. The implementation was attested on
-2026-09-06 by **Vadim1987**, author of the editor rework, who probed his own tree rather than reading
-it.
+carries is **what the keys do** and **who owns the answer**. The implementation was attested by
+**Vadim1987**, author of the editor rework, who probed his own tree rather than reading it.
 
 **The contract.**
 
 | key | in the editor |
 |---|---|
-| `Shift+Esc` | **always consumed** — leave, and discard. *(Remark, 2026-09-09 — de facto, verified in `editorController.lua`: the four states that claim bare Escape below claim it **regardless of modifiers**, so in a confirmation dialog, over an error message, in a block reorder and in search, `Shift+Esc` does what bare Escape does. It is still **consumed**; what it is not is leave-and-discard. That meaning belongs to navigation and editing — the two modes where bare Escape is silent. The two rows therefore dovetail rather than conflict: **Escape's four states are exactly the states this row's second clause does not apply in**. Owner ruling: a harmless overlook in the statement, corrected in place.)* |
+| `Shift+Esc` | **always consumed** — leave, and discard. *(Remark — de facto, verified in `editorController.lua`: the four states that claim bare Escape below claim it **regardless of modifiers**, so in a confirmation dialog, over an error message, in a block reorder and in search, `Shift+Esc` does what bare Escape does. It is still **consumed**; what it is not is leave-and-discard. That meaning belongs to navigation and editing — the two modes where bare Escape is silent. The two rows therefore dovetail rather than conflict: **Escape's four states are exactly the states this row's second clause does not apply in**. Owner ruling: a harmless overlook in the statement, corrected in place.)* |
 | bare `Escape` | **consumed in exactly four states**: dismissing an error, cancelling a confirmation dialog, cancelling a block reorder, and closing search. In navigation and in editing it does **nothing** |
 | `Ctrl+S` | **not the editor's** — reserved at application level, where the reservation runs **before** the route and does **not consume** (`D-RESERVE-TABLE`). So the key *does* reach the editor controller, which does not claim it — the rework's checkpoint is `Ctrl+K` (`../technical_debt/input.md`, `T-CTRL-S-UNCLAIMED`) — and it falls through to the widget, which has no binding for it. Nothing happens: ***not the editor's* is about claim, not about reach** |
 | `Ctrl+Shift+S` | **not in the editor's own spec** — an inherited binding this branch **re-expresses in `EditorController:_leave_keys`** (statement 3), whose effect is the console's `finish_edit`. It is not in the reservation table at all, so *"application level"* describes where the **effect** lives, not the binding. **Leaves the editor without writing an open changed block** (statement 6) |
@@ -2485,8 +2424,8 @@ it.
 
 1. **Bare Escape is silent in both main modes**, and this is the row with teeth. It binds **our**
    tree, not only the editor's own code: a key the contract says is silent must be silent **after
-   routing**, whichever component would otherwise consume it. **Ours honours it since 2026-09-09**
-   (`FLAGS-01`, `D-LIFECYCLE-FLAGS`): the key is still unclaimed and still reaches the widget's
+   routing**, whichever component would otherwise consume it. **Ours honours it**
+   (`D-LIFECYCLE-FLAGS`): the key is still unclaimed and still reaches the widget's
    `cancel_flow`, and the flow now does nothing there, because the editor's widget seats no
    lifecycle flags. *Prior state — it violated the row in both modes, clearing in navigation and
    emptying the open block in editing (`../technical_debt/input.md`, `T-NAV-ESCAPE`).* **Silence is
@@ -2500,7 +2439,7 @@ it.
    neither is ours to re-express at route level. We do re-express the second one
    (`../technical_debt/input.md`, `T-LEAVE-KEYS-LOSES-BLOCK`), and it reaches a path with no
    acceptance step, so it loses an open changed block. The chord ships **deprecated** by owner
-   ruling, **and the loss is now RULED — it ships, documented** (2026-09-07; statement 6, which also
+   ruling, **and the loss is now RULED — it ships, documented** (statement 6, which also
    names the second exit this statement does not: `Ctrl+T`).
 4. **What this does not decide.** @dsent has stated a **direction of travel** for the keymap —
    collapsing the exits onto `Ctrl+D`, dropping `Ctrl+Q`, and moving plain `Escape` into
@@ -2508,20 +2447,20 @@ it.
    not ratified here.** It is implemented nowhere today and it postdates both the rework and this
    feature. This entry ratifies the contract **as it stands**; adopting the redesign is a separate
    decision, and the release does not take it.
-5. **Ratifying a behaviour does not test it.** **Measured 2026-09-09** (`EDKEYS-01`): every row is
+5. **Ratifying a behaviour does not test it.** **Measured**: every row is
    now pinned, and the net is `tests/input/input_editor_keys_spec.lua` plus the cases it cites in
    `tests/editor/editor_spec.lua` and `tests/input/input_widget_callbacks_spec.lua`. **Its two
-   FLIP cases inverted on 2026-09-09, as they were written to**: the editing half now asserts the
+   FLIP cases inverted, as they were written to**: the editing half now asserts the
    open block survives bare Escape (the breaking test for that data loss), and the navigation half
    asserts the flow is still reached and destroys nothing. *Prior state: both asserted this
    contract's opposite on purpose, because the tree violated row 2 in both modes.* *Prior state, and the reason the
    entry existed: which of these rows the suite actually pinned was **unmeasured**, and the
-   measurement was owed rather than assumed* — `../technical_debt/input.md`, `T-KEYS-UNPINNED`. A contract recorded and unpinned is how the last one was lost: the exclusion
+   measurement was owed rather than assumed*. A contract recorded and unpinned is how the last one was lost: the exclusion
    upstream expressed as code, this branch re-expressed as an expectation, and **an expectation
    cannot fail**.
 
-6. **Two exits are historically unguarded, and the release ships them that way** (owner ruling,
-   2026-09-07, at `OP-04`: *"ship both, document the defect"*).
+6. **Two exits are historically unguarded, and the release ships them that way** (owner ruling:
+   *"ship both, document the defect"*).
 
    **NARROWER THAN THE CODE, and the gap is recorded rather than ruled** (found the same day, after
    this statement was written): *"two exits"* is exact **about exits**, and a **third** path loses a
@@ -2562,7 +2501,7 @@ it.
    **The one exit that IS guarded is pinned**: `tests/editor/editor_spec.lua`, *"leaving through
    Shift+Esc (2.3)"* — a dirty block asks instead of leaving.
 
-   **All three exits are pinned as of 2026-09-09** (owner ruling, at `EDKEYS-01`), and the two
+   **All three exits are pinned** (owner ruling), and the two
    unguarded ones carry a marker: `tests/input/input_editor_keys_spec.lua`, *"Ctrl+Shift+S leaves
    **(w/o confirmation)**"* and *"Ctrl+T leaves and runs **(w/o confirmation)**"*, each citing this
    statement and `../technical_debt/input.md`, `T-EXITS-BYPASS-GUARD`. *Prior wording, withdrawn —
@@ -2570,7 +2509,7 @@ it.
    place."* **The marker is what answers that objection**: the case names the behaviour a known
    defect that is slated to change, so a green test cannot be read as the specification, and the
    exits are inside the regression net instead of outside it. It is the same annotate-don't-invert
-   treatment `EDKEYS-01` gives the navigation-Escape case that pins this contract's opposite.
+   treatment statement 5 gives the navigation-Escape case that pins this contract's opposite.
 
 **Relation to `D-LIFECYCLE-FLAGS`.** Its first acceptance criterion — *the editor's Escape must match
 #45's expectations* — is row 1 of this table, and the two entries divide the work cleanly: that one
@@ -2582,9 +2521,8 @@ they ever disagree, this entry is the one carrying a stakeholder's ratification 
 
 ## D-SIMPLE-SURFACE — two named surfaces; the simple one is a wrapper on `compy`, not a second API
 
-**Status: IMPLEMENTED, 2026-09-09 (`SIMPLE-01`)** (owner rulings, 2026-09-07, amended 2026-09-09).
-`T-SIMPLE-SURFACE` is paid. **Five amendments came out of building it, and each is an owner ruling
-of 2026-09-09:**
+**Status: IMPLEMENTED** (owner ruling, amended).
+The basic-surface implementation obligation is paid. **Five amendments came out of building it, and each is an owner ruling:**
 
 1. **A fourth name ships — `compy.unask()`** (statement 2 said three). It disposes, restores and
    **concludes nothing**: `on_answer(nil)` means *the user abandoned*, and a program withdrawing its
@@ -2602,7 +2540,7 @@ of 2026-09-09:**
    `check_combo`; `D-COMBO-SHAPE`), and its message says *"for every key, use
    `compy.input.hooks`"*. The scenario `on_key` exists for is mostly bare keys.
 4. **A collision RAISES rather than chains.** `ask` refuses when `hooks.keypressed` is set or the
-   project defines `love.keypressed`, naming the precise API as the way out. Owner: *"people should
+   project defines `love.keypressed`, naming the advanced API as the way out. Owner: *"people should
    decide themselves what they want (no capability is blocked, as they can build whatever they want
    with precise API)."* This supersedes statement 7's memoize-and-chain mitigation, which was written
    for the tier that was not chosen.
@@ -2615,29 +2553,33 @@ of 2026-09-09:**
 **installed stub**, not a boolean. A question can be lost without concluding, and a flag that
 outlived it restored a stale configuration over the next question. Found by a test.
 
-*Prior status — DECIDED, NOT IMPLEMENTED* (owner rulings, 2026-09-07), with the implementation
-registered as active debt: `../technical_debt/input.md`, `T-SIMPLE-SURFACE`. It exists
+*Prior status — DECIDED, NOT IMPLEMENTED* (owner ruling), with the implementation
+registered as active debt. It exists
 because the stakeholders answered the shipped API with a **minimal-surface proposal**, and the
 release absorbs it.
 
 **Decision — seven statements, in force together.**
 
-1. **The release ships two named surfaces: the *precise* API and the *simple* API** (owner ruling on
-   the names, 2026-09-07 — chosen without strong preference, and recorded that way rather than
-   dressed as a principle). **Both documents use that pair and nothing else**: not *low-level*, not
-   *simplistic*, not *minimal*. *Precise* is a claim about exactness, so prose calling that surface
-   *legacy* or *raw* contradicts this statement.
-2. **The simple surface is names on the `compy` namespace itself, not under `compy.input`** — so a
-   program that only asks a question never meets the precise API's namespace. **Three names ship —
-   `compy.ask`, `compy.on_answer` and `compy.on_key`** (the third added 2026-09-07; statement 7).
+1. **The release ships two named surfaces: the *advanced* API and the *basic* API** (owner ruling on
+   the names — **SUPERSEDED**: the pair is now *basic* / *advanced*, replacing the
+   *simple* / *precise* pair originally ruled). **Both documents use that pair and nothing
+   else**: not *low-level*, not *simplistic*, not *minimal*, and no longer *simple* or *precise*.
+   *(The earlier ruling had chosen* precise *deliberately as a claim about exactness; the
+   replacement **retires that rationale** —* advanced *names the fuller surface without
+   asserting it is the exact one. Prose calling the basic surface* simplistic *or the advanced one*
+   legacy *or* raw *still contradicts this statement. Prior names, superseded: the* precise *API and
+   the* simple *API.)*
+2. **The basic surface is names on the `compy` namespace itself, not under `compy.input`** — so a
+   program that only asks a question never meets the advanced API's namespace. **Three names ship —
+   `compy.ask`, `compy.on_answer` and `compy.on_key`** (the third added later; statement 7).
    **Three things make this consistent rather than a reversal of the click-hook migration.**
    `D-NO-POLLING` distinguishes *"an input event arriving"* from *"a result leaving"* — the migration
    moved **events**; these are **results**. `compy.before_exit` is already a project-assignable
    callback on the namespace. And the shell permits it: `get_compy_namespace`'s `__newindex` refuses
    `input` (`D-FROZEN-SHELL`) and `rawset`s everything else.
 3. **It is a wrapper, and that is normative.** `compy.ask` seats the content baseline, the
-   project-owned settings and the lifecycle flags on **the same widget the precise API drives**, and
-   arms stubs into the precise callbacks. There is no second widget, no second state and no second
+   project-owned settings and the lifecycle flags on **the same widget the advanced API drives**, and
+   arms stubs into the advanced callbacks. There is no second widget, no second state and no second
    event path. **A reader who learns `ask` first and `show` later must find that the second contains
    the first.**
 4. **The stubs read the namespace slots when they fire; they never capture them.** That is what
@@ -2659,12 +2601,12 @@ release absorbs it.
    head of every `ask` bounds it; closing it needs the close callback the register already records
    as missing.
 7. **`compy.on_key` ships, and it reports keys without concluding the question** (owner,
-   2026-09-07, reversing a deferral taken the same day once the design turned out to be cheap).
+   reversing an earlier deferral once the design turned out to be cheap).
    **Its defining property is that the callback's RETURN VALUE decides consumption**: truthy claims
    the key and the widget never sees it; falsey lets it through to editing. That is
    `EditorController`'s own `block_input()` expressed as an ordinary Lua return, and it is what makes
    the requester's stated scenario — *"the API should make it easy to implement something like the
-   built-in editor"* — reachable from the simple surface rather than only from the precise one.
+   built-in editor"* — reachable from the basic surface rather than only from the advanced one.
    **It also dissolves a problem three earlier designs were built around:** `ask` needs no list of
    the keys editing owns, because the **program** decides. Return falsey and `backspace` still
    deletes.
@@ -2680,8 +2622,8 @@ release absorbs it.
    with a project's own handler, at the cost of one registration per modifier class inside `ask`.
    The **hooks** tier costs one registration but takes the project's single `keypressed` slot, which
    `D-HOOKS-SEEDED` seeds from the project's sandboxed `love.keypressed` — so a program that writes
-   both collides. **If the hook tier is chosen, the owner's mitigation is the design of record**
-   (2026-09-07): `ask` memoizes the previous hook, chains to it when `on_key` declines the key, and
+   both collides. **If the hook tier is chosen, the owner's mitigation is the design of record**:
+   `ask` memoizes the previous hook, chains to it when `on_key` declines the key, and
    reinstalls it on the exit paths — **with one guard, because `D-HOOKS-SEEDED` forbids
    resurrection**: restore only if the installed hook is still `ask`'s own, so a hook the project
    cleared mid-question stays cleared.
@@ -2693,9 +2635,7 @@ rather than shipped quietly.**
   removed from the screen"*). **Ours does not**: our widget spends `Ctrl+C`/`V`/`X`, `Ctrl+Y`,
   `Ctrl+W`, `Ctrl+Home`/`End` and `Ctrl+D` on **editing**, so a terminating report would end a
   question while the widget pastes into it — and his own scenario, the editor, does not close its
-  input on `Ctrl+F` either. *(Recorded first as a contradiction in his statements; that reading is
-  withdrawn — the terminating sentence describes the **ask** shape, which `on_answer` implements
-  exactly, while the editor scenario is about **capability**.)*
+  input on `Ctrl+F` either.
 - **His model reports abandonment as a key**; ours reports it as `on_answer(nil)`, which keeps
   *conclusion* in one callback and leaves `on_key` to report without concluding. *(`on_key` is not
   an observer: its **return value consumes**. Conclusion and consumption are different axes, and the
@@ -2711,7 +2651,7 @@ as reading *"accidental"*, and one worth not multiplying by three.
 *simpler* input API. A parallel surface would double the state a maintainer reasons about and would
 let the two drift; a wrapper cannot drift, because it has nothing of its own to drift with. It also
 keeps one key vocabulary and one widget lifetime, which is what lets a program that outgrows `ask`
-step onto the precise surface without relearning anything.
+step onto the advanced surface without relearning anything.
 
 ---
 
@@ -2719,7 +2659,7 @@ step onto the precise surface without relearning anything.
 
 **Empty, and that is a state rather than an oversight.** Six entries stood here — five superseded
 in full by a later decision, and one that its own heading called NOT A DECISION. All six were
-vacuumed on 2026-09-01, under `agents/rules/ledgers.md` §2: a ruling we made for ourselves may be
+vacuumed under the ledger rule that a ruling we made for ourselves may be
 swept once it rules nothing, and none of the six came from a stakeholder.
 
 **What made the sweep safe is the naming, not the emptiness.** That rule keeps retired entries
@@ -2728,8 +2668,8 @@ resolving to a tombstone — under numbering, the number a sweep misses still ex
 different decision. Under names it dangles visibly and greps out. So the tombstones were doing one
 job, and that job ended when the numbers did.
 
-**The six themselves are archived, not destroyed** — moved to the feature's working tree under
-`agents/rules/ledgers.md`, *"Vacuuming is a move, not a deletion"*. That archive leaves the
+**The six themselves are archived, not destroyed** — moved to the feature's working tree, because
+vacuuming is a move, not a deletion. That archive leaves the
 release when the working tree is deleted, which is correct: none of it is the product's
 history. It answers *what did the ledger used to contain* and *what work happened here* without a
 trip through `git log`, and it is **not** a second ledger — nothing in it rules anything.
@@ -2802,7 +2742,7 @@ as authoritative; under names it dangles visibly and greps out.
 | Decision 36 | `D-AUTO-HIDE` | |
 | Decision 37 | `D-PAYLOAD-SPLIT` | retired 2026-09-09; `D-ONE-PAYLOAD` stands in its place |
 | Decision 38 | `D-CONTENT-NORM` | |
-| — | `D-LIFECYCLE-FLAGS` | **no number** — decided 2026-09-06, after the numbers were retired (`DEC-01`) |
+| — | `D-LIFECYCLE-FLAGS` | **no number** — decided 2026-09-06, after the numbers were retired |
 
 **The six that were vacuumed are archived**, not destroyed — the feature's working tree holds
 them in full, and the overruled half of `D-AUTO-HIDE` beside them. (Seven rows map to nothing: Decision 19 is the

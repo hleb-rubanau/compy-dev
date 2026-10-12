@@ -1,3 +1,11 @@
+---
+description: Console mode implementation — the default REPL state, and the lifecycle manager for opening, running, suspending, stopping and closing projects
+status: active
+audience: developer
+authored: llm
+reviewed: none
+---
+
 # Console Mode — Implementation Overview
 
 <!-- authored By LLM; human-approved NOT YET -->
@@ -41,7 +49,7 @@ This is the most non-obvious architectural decision in the console. There are th
 
 **`main_env`** — the live console environment. Code typed into the REPL runs here. Contains the project management commands, file I/O, `compy`, `gfx`, etc. Mutated by user REPL commands.
 
-**`compy` is not the same table in both environments, and the difference is one member.** The console's `compy` has **no `input`** — the input surface is built for the project environment only (`get_compy_namespace(terminal, with_input)`, `consoleController.lua`). A console-side surface resolved whichever widget was current, so a command typed at the prompt could reconfigure a running project's widget, while its own hooks were dispatched by nobody; the release removes the member rather than making it work, *"because input API is not yet ready to run out of project sandbox"* (owner, 2026-09-08). **Assignment still raises in both**: `compy.input = {}` at the prompt fails loudly instead of handing the caller a plain table it would believe is the API. What a console-side input surface would have to be is designed and not scheduled — see `doc/development/technical_debt/input.md`, `T-CONSOLE-SURFACE-INTERFERES`, and the BACKLOG entry it points at.
+**`compy` is not the same table in both environments, and the difference is one member.** The console's `compy` has **no `input`** — the input surface is built for the project environment only (`get_compy_namespace(terminal, with_input)`, `consoleController.lua`). A console-side surface resolved whichever widget was current, so a command typed at the prompt could reconfigure a running project's widget while its own hooks were dispatched by nobody. The release removes the member rather than making it work, *"because input API is not yet ready to run out of project sandbox"* (owner, 2026-09-08). **Assignment still raises in both**: `compy.input = {}` at the prompt fails loudly instead of handing the caller a plain table it would believe is the API. What a console-side input surface would have to be is designed and not scheduled — see `doc/development/technical_debt/input.md`, *"`compy.input` in the console environment is required and unmet"*.
 
 **`base_env`** — a frozen snapshot of `project_env` at project-open time. Protected with `table.protect()` (writes are blocked). Serves as the clean baseline that `project_env` is reset to when a project is stopped without closing.
 

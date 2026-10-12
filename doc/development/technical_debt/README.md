@@ -21,8 +21,9 @@ paid, or turned out not to be debt — moved there, not deleted, with its headin
 marker kept intact.
 
 Tone and intent follow
-[`../conventions/architecture_principles.md`](../conventions/architecture_principles.md)
-and the analytic-notes guidance in [`../../../agents/rules.md`](../../../agents/rules.md).
+[`../conventions/architecture_principles.md`](../conventions/architecture_principles.md): state
+what is, matter-of-factly and without a blame register — the audience built the system and knows
+its trade-offs.
 
 This register is organised **per subsystem** — one file per area, so a new subsystem gets
 its own ledger instead of growing a single flat list.

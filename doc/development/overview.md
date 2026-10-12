@@ -41,7 +41,7 @@ ConsoleModel → ConsoleController → ConsoleView
 |---|---|
 | `consoleModel.lua` | Top-level aggregate: input, editor, output (canvas), projects |
 | `input/` | `UserInputModel`, `InputText`, `Cursor`, `History`, `InputSelection` |
-| `editor/` | `EditorModel`, `BufferModel`, `SearchModel`, `VisibleContent`, `SemanticInfo` |
+| `editor/` | `EditorModel`, `BufferModel`, `Search`, `VisibleContent`, `SemanticInfo` |
 | `interpreter/eval/` | `Evaluator` — validate → parse → transform pipeline for user input |
 | `lang/lua/` | Lua parser (via metalua), semantic analyzer, highlighter, error types |
 | `lang/md/` | Markdown parser |

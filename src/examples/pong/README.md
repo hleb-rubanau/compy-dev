@@ -310,7 +310,5 @@ and efficient even on limited hardware.
  * High SPEED_SCALE: makes movement faster 
    but less accurate.
  * Bounded steps also protect the game 
-   from rare GC pauses.
- * Bounded steps also protect the game 
    from rare GC pauses that can freeze
    animation for a moment.

@@ -24,6 +24,8 @@ This distinction pervades the entire editor stack. Understanding it is the prere
 
 A `BufferModel` (`src/model/editor/bufferModel.lua`) is created with these tools and immediately tries to chunk the file content. **If the initial Lua parse fails, the buffer is marked `readonly = true`** and the selection is set to 1. The file is viewable but nothing can be edited or saved — this prevents corrupting a file that the editor cannot parse.
 
+**On open, the buffer selects the first block** (`sel = 1` in `bufferModel.lua`; the selection can later be walked to the last with `move_selection`). This is PR #45's behaviour, imported faithfully: before the import the editor opened with the **last** block selected. Nothing reverses it — but it is a real behaviour change, so navigation written against the old selection (an `up` that used to walk from the last block) no longer moves from the top of the document.
+
 After construction, `lateinit` calls `analyze()` immediately to populate semantic info.
 
 ---
@@ -68,7 +70,7 @@ Pressing `Enter` on non-empty input goes through `_handle_submit` (editorControl
 2. **Re-chunk** — the pretty-printed result is chunked again to get the actual block structure that will be stored.
 3. **Empty preservation** — if the raw input had a leading or trailing `Empty` block but the pretty-printed version does not, those empties are restored. This preserves the user's intentional blank-line spacing.
 4. **Empty injection** — if two consecutive non-empty chunks emerged from the pretty-print, an `Empty` is inserted between them. Enforces the "at most one blank line" format rule at the model level.
-5. **Oversize check** — if any resulting block exceeds the size limit (currently `bufv:get_max_size()` = `LINES` = 16, though the intended limit is `input_max` = 14 — see Monster Blocks section), the submit is rejected. The cursor moves to line 1 of the offending block; no error message.
+5. **Oversize check** — if any resulting block exceeds the size limit (currently `bufv:get_max_size()` = `LINES` = 16, though the intended limit is `input_max` = 14 — see the `input_max` vs `LINES` note in the Input Widget section above), the submit is rejected. The cursor moves to line 1 of the offending block; no error message.
 6. **Replace or Insert** — `replace_content` or `insert_content` updates the buffer, adjusting all subsequent block positions via `Range:translate`.
 7. **Auto-save** — `buf:save()` is called immediately. Every accepted submit writes to disk.
 
@@ -87,7 +89,7 @@ A block with more source lines than the editor's size limit is a **monster block
 
 The practical editing pattern: load the monster block, edit it into valid code that chunks into conforming-size pieces, submit. Multiple resulting chunks each become their own block in the buffer, with empty separators injected between consecutive non-empty ones (step 4 of the submit pipeline).
 
-**Note on the current size limit:** the oversize check calls `bufv:get_max_size()` which returns `LINES = 16` (buffer viewport height). The intended limit is `input_max = 14` (input view height, matching the code convention). This means the editor currently accepts blocks of 15–16 lines that violate the convention and require input scrolling to view fully. See the `input_max` vs `LINES` note in the Input Widget section above.
+**Note on the current size limit:** the oversize threshold here is `bufv:get_max_size()` = `LINES` = 16, not the intended `input_max` = 14 — so the editor accepts 15–16 line blocks that violate the convention and need input scrolling to view. Full explanation in the `input_max` vs `LINES` note in the Input Widget section above.
 
 Source: commit `2ff95f03b8f8` ("Split monster block"); logic in `editorController.lua:_handle_submit` and `bufferView.lua:is_selection_visible`.
 
@@ -159,9 +161,9 @@ This gives the editor two capabilities:
 
 `EditorModel.buffers` is a `Dequeue<BufferModel>` used as a stack (front = active). `EditorView.buffers` is a parallel table keyed by buffer ID (the Lua table address as a string — not the filename). The two stay in sync manually.
 
-Opening a file (`EditorController:open`) pushes a new buffer to the front and tells the view to create a new `BufferView` for it. Ctrl+S (`close_buffer`) pops the front buffer and activates the next one. If only one buffer remains, Ctrl+S closes the editor entirely and returns to the console.
+Opening a file (`EditorController:open`) pushes a new buffer to the front and tells the view to create a new `BufferView` for it. **Shift+Esc** in nav mode (through `discard` → `close_buffer`) pops the front buffer and activates the next one. If only one buffer remains, it closes the editor entirely and returns to the console. (Bare `Ctrl+S` does nothing in the editor since the PR #45 import — it is the stop-run reservation; the editor is left with `Shift+Esc`.)
 
-Ctrl+O (`follow_require`) calls `self.console:edit(name)` which triggers a full new `open` call, pushing another buffer. This creates a chain: file A → file B → file C, navigable back with Ctrl+S.
+Ctrl+O (`follow_require`) calls `self.console:edit(name)` which triggers a full new `open` call, pushing another buffer. This creates a chain: file A → file B → file C, navigable back with Shift+Esc.
 
 The buffer ID ensures the view can retrieve the right `BufferView` even after the model stack changes order. `EditorView.buffers` is never pruned during a session — views for closed buffers remain in the table but are unreachable via the controller once the model buffer is popped.
 
